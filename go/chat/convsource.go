@@ -929,17 +929,8 @@ func (s *HybridConversationSource) Expunge(ctx context.Context,
 	s.lockTab.Acquire(ctx, uid, convID)
 	defer s.lockTab.Release(ctx, uid, convID)
 
-	mergeRes, err := s.storage.Expunge(ctx, convID, uid, expunge)
-	if err != nil {
+	if _, err := s.storage.Expunge(ctx, convID, uid, expunge); err != nil {
 		return err
-	}
-	if mergeRes.DeletedHistory {
-		supdate := []chat1.ConversationStaleUpdate{chat1.ConversationStaleUpdate{
-			ConvID:     convID,
-			UpdateType: chat1.StaleUpdateType_CLEAR,
-		}}
-		// It is ok to send notifications while hodling the lock because it's a re-entrant-ish lock.
-		s.G().Syncer.SendChatStaleNotifications(ctx, uid, supdate, false)
 	}
 	return nil
 }
