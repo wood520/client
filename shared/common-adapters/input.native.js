@@ -10,15 +10,18 @@ import {isIOS} from '../constants/platform'
 
 import type {Props} from './input'
 
+type Selection = {selectionStart: number, selectionEnd: number}
+
 type State = {
   focused: boolean,
   height: ?number,
-  selections: {selectionStart: number, selectionEnd: number},
+  selections: Selection,
 }
 
 class Input extends Component<Props, State> {
   state: State
   _input: NativeTextInput | null
+  _nextSelection: Selection | null
 
   constructor(props: Props) {
     super(props)
@@ -59,6 +62,7 @@ class Input extends Component<Props, State> {
   }
 
   _onChangeText = (text: string) => {
+    console.log('inputnative: onchangetext to ', text)
     this.props.onChangeText && this.props.onChangeText(text)
   }
 
@@ -78,9 +82,13 @@ class Input extends Component<Props, State> {
     newSelectionEnd: number
   ) => {
     const v = this.getValue()
-    const nextText = v.slice(0, startIdx) + text + v.slice(endIdx)
-    this._onChangeText(nextText)
-    this.setState({selections: {selectionStart: newSelectionStart, selectionEnd: newSelectionEnd}})
+    const nextValue = v.slice(0, startIdx) + text + v.slice(endIdx)
+    console.log('inputnative replaceText')
+    this._onChangeText(nextValue)
+    this._nextSelection = {
+      selectionStart: newSelectionStart,
+      selectionEnd: newSelectionStart,
+    }
   }
 
   _onKeyDown = (e: SyntheticKeyboardEvent<>) => {
@@ -144,9 +152,14 @@ class Input extends Component<Props, State> {
   }
 
   _onSelectionChange = (event: {nativeEvent: {selection: {start: number, end: number}}}) => {
-    const selection = {
+    let selection = {
       selectionStart: event.nativeEvent.selection.start,
       selectionEnd: event.nativeEvent.selection.end,
+    }
+    console.log('inputnative onselectionchange', this._nextSelection, selection)
+    if (this._nextSelection) {
+      selection = this._nextSelection
+      this._nextSelection = null
     }
     this.setState(
       {
@@ -211,12 +224,15 @@ class Input extends Component<Props, State> {
         ? this.props.floatingHintTextOverride
         : this.props.hintText || ' ')
 
+    const selectionStart = Math.min(this.state.selections.selectionStart, value.length)
+    const selectionEnd = Math.min(this.state.selections.selectionEnd, value.length)
+
     const commonProps = {
       autoCorrect: this.props.hasOwnProperty('autoCorrect') && this.props.autoCorrect,
       autoCapitalize: this.props.autoCapitalize || 'none',
       editable: this.props.hasOwnProperty('editable') ? this.props.editable : true,
       keyboardType: this.props.keyboardType,
-      autoFocus: this.props.autoFocus,
+      autoFocus: this.props.autoFocus || true,
       onBlur: this._onBlur,
       onChangeText: this._onChangeText,
       onFocus: this._onFocus,
@@ -229,11 +245,22 @@ class Input extends Component<Props, State> {
         this._input = r
       },
       returnKeyType: this.props.returnKeyType,
+      selection: {
+        start: selectionStart,
+        end: selectionEnd,
+      },
       value,
       secureTextEntry: this.props.type === 'password',
       underlineColorAndroid: 'transparent',
       ...(this.props.maxLength ? {maxlength: this.props.maxLength} : null),
     }
+
+    console.log(
+      'inputnative: commonProps',
+      commonProps.selection,
+      commonProps.value,
+      commonProps.value.length
+    )
 
     const singlelineProps = {
       ...commonProps,
