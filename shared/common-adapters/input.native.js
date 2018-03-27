@@ -100,8 +100,10 @@ class Input extends Component<Props, State> {
     // Set selection explicitly to work around
     // https://github.com/facebook/react-native/issues/18578 .
     const suppressNextSelectionChange = isAndroid
+    const suppressSelectionChangesUntil = Date.now() + 100
     this.setState({
       suppressNextSelectionChange,
+      suppressSelectionChangesUntil,
       selections: {
         selectionStart: newSelectionStart,
         selectionEnd: newSelectionStart,
