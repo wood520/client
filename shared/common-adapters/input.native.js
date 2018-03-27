@@ -167,6 +167,8 @@ class Input extends Component<Props, State> {
   }
 
   _onSelectionChange = (event: {nativeEvent: {selection: {start: number, end: number}}}) => {
+    // On iOS, flicker is caused by
+    // https://github.com/facebook/react-native/issues/18341 .
     let newState = {}
     if (this.state.androidWaitingForNextSelectionChange) {
       // Workaround for https://github.com/facebook/react-native/issues/18316 .
