@@ -73,7 +73,6 @@ class Input extends Component<Props, State> {
   }
 
   _onChangeText = (text: string) => {
-    console.log('inputnative: onchangetext to ', text)
     this.props.onChangeText && this.props.onChangeText(text)
   }
 
@@ -94,12 +93,17 @@ class Input extends Component<Props, State> {
   ) => {
     const v = this.getValue()
     const nextValue = v.slice(0, startIdx) + text + v.slice(endIdx)
-    console.log('inputnative replaceText')
     this._onChangeText(nextValue)
-    this._nextSelection = {
-      selectionStart: newSelectionStart,
-      selectionEnd: newSelectionStart,
-    }
+    // Set selection explicitly to work around
+    // https://github.com/facebook/react-native/issues/18578 .
+    this.setState({
+      // Workaround for https://github.com/facebook/react-native/issues/18316 .
+      androidWaitingForNextSelectionChange: isAndroid,
+      selections: {
+        selectionStart: newSelectionStart,
+        selectionEnd: newSelectionStart,
+      },
+    })
   }
 
   _onKeyDown = (e: SyntheticKeyboardEvent<>) => {
@@ -163,20 +167,27 @@ class Input extends Component<Props, State> {
   }
 
   _onSelectionChange = (event: {nativeEvent: {selection: {start: number, end: number}}}) => {
-    let selection = {
-      selectionStart: event.nativeEvent.selection.start,
-      selectionEnd: event.nativeEvent.selection.end,
-    }
-    console.log('inputnative onselectionchange', this._nextSelection, selection)
-    if (this._nextSelection) {
-      selection = this._nextSelection
-      this._nextSelection = null
+    let newState = {}
+    if (this.state.androidWaitingForNextSelectionChange) {
+      // Workaround for https://github.com/facebook/react-native/issues/18316 .
+      const selections = this.state.selections
+      newState = {selections, androidWaitingForNextSelectionChange: false}
+    } else {
+      let {start, end} = event.nativeEvent.selection
+      // Work around https://github.com/facebook/react-native/issues/18579 .
+      if (end < start) {
+        ;[start, end] = [end, start]
+      }
+      newState = {
+        selections: {
+          selectionStart: start,
+          selectionEnd: end,
+        },
+      }
     }
     this.setState(
-      {
-        selections: selection,
-      },
-      () => this.props.onSelectionChange && this.props.onSelectionChange(selection)
+      newState,
+      () => this.props.onSelectionChange && this.props.onSelectionChange(newState.selections)
     )
   }
 
@@ -235,8 +246,13 @@ class Input extends Component<Props, State> {
         ? this.props.floatingHintTextOverride
         : this.props.hintText || ' ')
 
-    const selectionStart = Math.min(this.state.selections.selectionStart, value.length)
-    const selectionEnd = Math.min(this.state.selections.selectionEnd, value.length)
+    let selection = {
+      start: this.state.selections.selectionStart,
+      end: this.state.selections.selectionEnd,
+    }
+    if (isAndroid && this.state.androidWaitingForNextSelectionChange) {
+      selection = undefined
+    }
 
     const commonProps = {
       autoCorrect: this.props.hasOwnProperty('autoCorrect') && this.props.autoCorrect,
@@ -256,22 +272,12 @@ class Input extends Component<Props, State> {
         this._input = r
       },
       returnKeyType: this.props.returnKeyType,
-      selection: {
-        start: selectionStart,
-        end: selectionEnd,
-      },
+      selection,
       value,
       secureTextEntry: this.props.type === 'password',
       underlineColorAndroid: 'transparent',
       ...(this.props.maxLength ? {maxlength: this.props.maxLength} : null),
     }
-
-    console.log(
-      'inputnative: commonProps',
-      commonProps.selection,
-      commonProps.value,
-      commonProps.value.length
-    )
 
     const singlelineProps = {
       ...commonProps,
