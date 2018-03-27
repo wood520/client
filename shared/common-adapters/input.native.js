@@ -195,14 +195,14 @@ class Input extends Component<Props, State> {
     if (end < start) {
       ;[start, end] = [end, start]
     }
-    const newState = {}
-    this.setState(
-      {
-        selections: {
-          selectionStart: start,
-          selectionEnd: end,
-        },
+    const newState = {
+      selections: {
+        selectionStart: start,
+        selectionEnd: end,
       },
+    }
+    this.setState(
+      newState,
       () => this.props.onSelectionChange && this.props.onSelectionChange(newState.selections)
     )
   }
