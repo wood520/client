@@ -111,16 +111,6 @@ class Input extends Component<Props, State> {
     })
   }
 
-  _onKeyDown = (e: SyntheticKeyboardEvent<>) => {
-    if (this.props.onKeyDown) {
-      this.props.onKeyDown(e, false)
-    }
-
-    if (this.props.onEnterKeyDown && e.key === 'Enter') {
-      this.props.onEnterKeyDown(e)
-    }
-  }
-
   _onLayout = () => {
     if (this.state.waitUntilLayoutForSelection) {
       this.setState({waitUntilLayoutForSelection: false})
@@ -281,7 +271,6 @@ class Input extends Component<Props, State> {
       onBlur: this._onBlur,
       onChangeText: this._onChangeText,
       onFocus: this._onFocus,
-      onKeyDown: this._onKeyDown,
       onLayout: this._onLayout,
       onSelectionChange: this._onSelectionChange,
       onSubmitEditing: this.props.onEnterKeyDown,
