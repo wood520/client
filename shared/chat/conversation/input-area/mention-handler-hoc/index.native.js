@@ -141,7 +141,6 @@ const mentionHoc = (InputComponent: React.ComponentType<Props>) => {
     }
 
     onSelectionChange = (selection: {selectionStart: number, selectionEnd: number}) => {
-      console.log('inputnative mhh selectionchange', selection)
       this.setState(
         {
           _selection: selection,
