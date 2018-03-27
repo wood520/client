@@ -15,8 +15,9 @@ type Selection = {selectionStart: number, selectionEnd: number}
 type State = {
   focused: boolean,
   height: ?number,
-  // Workaround for https://github.com/facebook/react-native/issues/18316 .
-  androidWaitingForNextSelectionChange: boolean,
+  waitUntilLayoutForSelection: boolean,
+  suppressNextSelectionChange: boolean,
+  suppressSelectionChangesUntil: number | null,
   selections: Selection,
 }
 
@@ -30,8 +31,8 @@ class Input extends Component<Props, State> {
 
     const value = props.value || ''
 
-    // It's not documented anywhere, but it appears that the initial
-    // selection is always set to the end of the initial text. See
+    // It's not documented anywhere, but the initial selection is
+    // always set to the end of the initial text. See
     // https://github.com/facebook/react-native/issues/18578 .
     const selectionStart = value.length
     const selectionEnd = value.length
@@ -39,7 +40,9 @@ class Input extends Component<Props, State> {
     this.state = {
       focused: false,
       height: null,
-      androidWaitingForNextSelectionChange: isAndroid,
+      waitUntilLayoutForSelection: isAndroid,
+      suppressNextSelectionChange: false,
+      suppressSelectionChangesUntil: null,
       selections: {selectionStart, selectionEnd},
     }
   }
@@ -96,9 +99,9 @@ class Input extends Component<Props, State> {
     this._onChangeText(nextValue)
     // Set selection explicitly to work around
     // https://github.com/facebook/react-native/issues/18578 .
+    const suppressNextSelectionChange = isAndroid
     this.setState({
-      // Workaround for https://github.com/facebook/react-native/issues/18316 .
-      androidWaitingForNextSelectionChange: isAndroid,
+      suppressNextSelectionChange,
       selections: {
         selectionStart: newSelectionStart,
         selectionEnd: newSelectionStart,
@@ -113,6 +116,12 @@ class Input extends Component<Props, State> {
 
     if (this.props.onEnterKeyDown && e.key === 'Enter') {
       this.props.onEnterKeyDown(e)
+    }
+  }
+
+  _onLayout = () => {
+    if (this.state.waitUntilLayoutForSelection) {
+      this.setState({waitUntilLayoutForSelection: false})
     }
   }
 
@@ -167,28 +176,33 @@ class Input extends Component<Props, State> {
   }
 
   _onSelectionChange = (event: {nativeEvent: {selection: {start: number, end: number}}}) => {
+    const {suppressNextSelectionChange, suppressSelectionChangesUntil} = this.state
     // On iOS, flicker is caused by
     // https://github.com/facebook/react-native/issues/18341 .
-    let newState = {}
-    if (this.state.androidWaitingForNextSelectionChange) {
-      // Workaround for https://github.com/facebook/react-native/issues/18316 .
-      const selections = this.state.selections
-      newState = {selections, androidWaitingForNextSelectionChange: false}
-    } else {
-      let {start, end} = event.nativeEvent.selection
-      // Work around https://github.com/facebook/react-native/issues/18579 .
-      if (end < start) {
-        ;[start, end] = [end, start]
+    if (suppressNextSelectionChange) {
+      this.setState({suppressNextSelectionChange: false})
+      return
+    } else if (suppressSelectionChangesUntil) {
+      const now = Date.now()
+      if (now < suppressSelectionChangesUntil) {
+        this.setState({})
+        return
       }
-      newState = {
+    }
+
+    let {start, end} = event.nativeEvent.selection
+    // Work around https://github.com/facebook/react-native/issues/18579 .
+    if (end < start) {
+      ;[start, end] = [end, start]
+    }
+    const newState = {}
+    this.setState(
+      {
         selections: {
           selectionStart: start,
           selectionEnd: end,
         },
-      }
-    }
-    this.setState(
-      newState,
+      },
       () => this.props.onSelectionChange && this.props.onSelectionChange(newState.selections)
     )
   }
@@ -252,7 +266,7 @@ class Input extends Component<Props, State> {
       start: this.state.selections.selectionStart,
       end: this.state.selections.selectionEnd,
     }
-    if (isAndroid && this.state.androidWaitingForNextSelectionChange) {
+    if (this.state.waitUntilLayoutForSelection) {
       selection = undefined
     }
 
@@ -266,6 +280,7 @@ class Input extends Component<Props, State> {
       onChangeText: this._onChangeText,
       onFocus: this._onFocus,
       onKeyDown: this._onKeyDown,
+      onLayout: this._onLayout,
       onSelectionChange: this._onSelectionChange,
       onSubmitEditing: this.props.onEnterKeyDown,
       onEndEditing: this.props.onEndEditing,
