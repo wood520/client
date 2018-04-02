@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	"runtime/debug"
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/buger/jsonparser"
 	keybase1 "github.com/keybase/client/go/protocol/keybase1"
@@ -526,6 +528,11 @@ func (tmp *ChainLinkUnpacked) unpackPayloadJSON(payload []byte) error {
 		return err
 	}
 
+	if tmp.sigID == "db9a0afaab297048be0d44ffd6d89a3eb6a003256426d7fd87a60ab59880f8160f" {
+		fmt.Printf("\n\nHashing over: %q\n\n", payload)
+		debug.PrintStack()
+	}
+
 	tmp.etime = tmp.ctime + ei
 	h := sha256.Sum256(payload)
 	tmp.payloadHash = h[:]
@@ -561,14 +568,6 @@ func (c *ChainLink) UnpackComputedKeyInfos(data []byte) error {
 	return nil
 }
 
-type chainLinkPacked struct {
-	SigID         keybase1.SigID `json:"sig_id"`
-	Sig           string         `json:"sig"`
-	SigVersion    int            `json:"sigVersion"`
-	PayloadJSON   string         `json:"payload_json"`
-	ProofTextFull string         `json:"proof_text_full"`
-	SigVerified   bool           `json:"sig_verified"`
-}
 
 func (c *ChainLink) unpackStubbed(raw string) error {
 	ol, err := DecodeStubbedOuterLinkV2(raw)
@@ -627,6 +626,8 @@ func (c *ChainLink) Unpack(trusted bool, selfUID keybase1.UID, packed []byte) er
 		if err != nil {
 			return err
 		}
+
+		payload = c.unfixPayload(payload, tmp.sigID)
 	} else {
 		// use the payload in payload_json
 		data, _, _, err := jsonparser.Get(packed, "payload_json")
@@ -820,8 +821,15 @@ func (c *ChainLink) verifyHashV1() error {
 	if c.hashVerified {
 		return nil
 	}
+	if c.unpacked.sigID == "db9a0afaab297048be0d44ffd6d89a3eb6a003256426d7fd87a60ab59880f8160f" {
+		cpy := c.Copy()
+		cpy.parent = nil
+		cpy.Contextified = Contextified{}
+		spew.Dump(cpy)
+	}
 	h := c.getPayloadHash()
 	if !FastByteArrayEq(h[:], c.id) {
+		debug.PrintStack()
 		return fmt.Errorf("hash mismatch in verifyHashV1")
 	}
 	c.hashVerified = true
@@ -843,7 +851,22 @@ func (c *ChainLink) fixPayload(payload []byte, sigID keybase1.SigID) []byte {
 	if s, ok := badWhitespaceChainLinks[sigID]; ok {
 		if payload[len(payload)-1] != '\n' {
 			c.G().Log.Debug("Fixing payload by adding newline on link '%s': %s", sigID, s)
-			return append(payload, '\n')
+			fmt.Printf("Fixed payload for %q by adding \\n.\n", sigID)
+			tmp := make([]byte, len(payload), len(payload)+1)
+			copy(tmp,payload)
+			return append(tmp, '\n')
+		} else {
+			fmt.Printf("Payload for %q does not need fixing.\n", sigID)
+		}
+	}
+	return payload
+}
+
+func (c *ChainLink) unfixPayload(payload []byte, sigID keybase1.SigID) []byte {
+	if s, ok := badWhitespaceChainLinks[sigID]; ok {
+		if payload[len(payload)-1] == '\n' {
+			c.G().Log.Debug("Un-Fixing cached newline payload by adding newline on link '%s': %s", sigID, s)
+			return payload[:len(payload)-1]
 		}
 	}
 	return payload
