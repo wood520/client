@@ -66,7 +66,7 @@ func NewBackgroundConvLoader(g *globals.Context) *BackgroundConvLoader {
 		suspendCh:     make(chan chan struct{}, 10),
 		identNotifier: NewCachingIdentifyNotifier(g),
 		clock:         clockwork.NewRealClock(),
-		resumeWait:    time.Second,
+		resumeWait:    300 * time.Millisecond,
 	}
 	b.identNotifier.ResetOnGUIConnect()
 	b.newQueue()
@@ -257,7 +257,7 @@ func (b *BackgroundConvLoader) loop() {
 	}
 	// On mobile fresh start, apply the foreground wait
 	if b.G().GetAppType() == libkb.MobileAppType {
-		b.Debug(bgctx, "loop: delaying startup since on mobile")
+		b.Debug(bgctx, "loop: delaying startup since on mobile (in the foreground)")
 		if !b.recvTimeWithShutdown(bgctx, b.clock.After(b.resumeWait), "initial mobile wait") {
 			return
 		}

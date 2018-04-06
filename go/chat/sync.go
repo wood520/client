@@ -72,6 +72,8 @@ func (s *Syncer) monitorAppState() {
 		case keybase1.AppState_FOREGROUND:
 			s.Debug(ctx, "monitorAppState: foregrounded, flushing")
 			s.flushCh <- struct{}{}
+		case keybase1.AppState_BACKGROUNDACTIVE:
+			s.Debug(ctx, "monitorAppState: background active mode, starting sync connection")
 		}
 	}
 }

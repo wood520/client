@@ -224,7 +224,7 @@ func (g *gregorHandler) monitorAppState() {
 		state = <-g.G().AppState.NextUpdate(&state)
 		switch state {
 		case keybase1.AppState_BACKGROUNDACTIVE:
-			fallthrough
+			// do nothing here
 		case keybase1.AppState_FOREGROUND:
 			// Make sure the URI is set before attempting this (possible it isnt in a race)
 			if g.uri != nil {
@@ -233,7 +233,7 @@ func (g *gregorHandler) monitorAppState() {
 					g.chatLog.Debug(context.Background(), "error reconnecting")
 				}
 			}
-		case keybase1.AppState_INACTIVE, keybase1.AppState_BACKGROUND:
+		case keybase1.AppState_INACTIVE, keybase1.AppState_BACKGROUND, keybase1.AppState_BACKGROUNDFINAL:
 			g.chatLog.Debug(context.Background(), "backgrounded, shutting down connection")
 			g.Shutdown()
 		}
