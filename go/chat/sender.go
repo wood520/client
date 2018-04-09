@@ -834,6 +834,14 @@ func (s *Deliverer) Queue(ctx context.Context, convID chat1.ConversationID, msg 
 	return obr, nil
 }
 
+func (s *Deliverer) ActivelyDelivering(ctx context.Context) bool {
+	obrs, err := s.outbox.PullAllConversations(ctx, false, false)
+	if err != nil {
+		return false
+	}
+	return len(obrs) > 0
+}
+
 func (s *Deliverer) doNotRetryFailure(ctx context.Context, obr chat1.OutboxRecord, err error) (chat1.OutboxErrorType, bool) {
 
 	if !s.connected {
