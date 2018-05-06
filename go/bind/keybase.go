@@ -287,9 +287,13 @@ func SetAppStateInactive() {
 	defer kbCtx.Trace("SetAppStateInactive", func() error { return nil })()
 	kbCtx.AppState.Update(keybase1.AppState_INACTIVE)
 }
-func SetAppStateBackgroundActive() {
-	defer kbCtx.Trace("SetAppStateBackgroundActive", func() error { return nil })()
+
+func BackgroundSync() {
+	defer kbCtx.Trace("BackgroundSync", func() error { return nil })()
 	kbCtx.AppState.Update(keybase1.AppState_BACKGROUNDACTIVE)
+	// Pause for some set duration to let syncing happen, and then tear everything down
+	time.Sleep(10 * time.Second)
+	kbCtx.AppState.Update(keybase1.AppState_BACKGROUND)
 }
 
 // AppWillExit is called reliably on iOS when the app is about to terminate

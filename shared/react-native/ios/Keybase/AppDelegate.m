@@ -104,6 +104,13 @@ const BOOL isDebug = NO;
                                                    } error:&err];
 }
 
+-(void) application:(UIApplication *)application performFetchWithCompletionHandler:
+(void (^)(UIBackgroundFetchResult))completionHandler {
+
+  NSLog(@"Background fetch started...");
+  NSLog(@"Background fetch completed...");
+}
+
 #ifdef SYSTRACING
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge {
   return [NSURL URLWithString:@"http://localhost:8081/index.ios.bundle?platform=ios&dev=true"];
@@ -158,6 +165,10 @@ const BOOL isDebug = NO;
   self.resignImageView.backgroundColor = [UIColor whiteColor];
   [self.resignImageView setImage:[UIImage imageNamed:@"LaunchImage"]];
   [self.window addSubview:self.resignImageView];
+  
+  [[UIApplication sharedApplication]
+   setMinimumBackgroundFetchInterval:
+   UIApplicationBackgroundFetchIntervalMinimum];
 
   return YES;
 }

@@ -23,16 +23,18 @@ type Syncer struct {
 	isConnected bool
 	offlinables []types.Offlinable
 
-	notificationLock  sync.Mutex
-	lastLoadedLock    sync.Mutex
-	clock             clockwork.Clock
-	sendDelay         time.Duration
-	shutdownCh        chan struct{}
-	fullReloadCh      chan gregor1.UID
-	flushCh           chan struct{}
-	notificationQueue map[string][]chat1.ConversationStaleUpdate
-	fullReload        map[string]bool
-	lastLoadedConv    chat1.ConversationID
+	notificationLock      sync.Mutex
+	inboxNotificationLock sync.Mutex
+	lastLoadedLock        sync.Mutex
+	clock                 clockwork.Clock
+	sendDelay             time.Duration
+	shutdownCh            chan struct{}
+	fullReloadCh          chan gregor1.UID
+	flushCh               chan struct{}
+	notificationQueue     map[string][]chat1.ConversationStaleUpdate
+	fullReload            map[string]bool
+	inboxSyncQueue        map[string]chat1.ChatSyncResult
+	lastLoadedConv        chat1.ConversationID
 }
 
 func NewSyncer(g *globals.Context) *Syncer {
@@ -46,6 +48,7 @@ func NewSyncer(g *globals.Context) *Syncer {
 		flushCh:           make(chan struct{}),
 		notificationQueue: make(map[string][]chat1.ConversationStaleUpdate),
 		fullReload:        make(map[string]bool),
+		inboxSyncQueue:    make(map[string]chat1.ChatSyncResult),
 		sendDelay:         time.Millisecond * 1000,
 	}
 
@@ -290,13 +293,93 @@ func (s *Syncer) filterNotifyConvs(ctx context.Context, convs []chat1.Conversati
 	return res
 }
 
+func (s *Syncer) queueInboxSync(ctx context.Context, uid gregor1.UID, syncRes chat1.ChatSyncResult) {
+	typ, err := syncRes.SyncType()
+	if err != nil {
+		s.Debug(ctx, "queueInboxSync: failed to get sync type: %s", err)
+		return
+	}
+	// if there is nothing current set, then we just set whatever is sent this time
+	lastRes, ok := s.inboxSyncQueue[uid.String()]
+	if !ok {
+		s.inboxSyncQueue[uid.String()] = syncRes
+		return
+	}
+	switch typ {
+	case chat1.SyncInboxResType_CURRENT:
+		// don't do anything here, it could already be current, or something else we shouldn't override
+	case chat1.SyncInboxResType_CLEAR:
+		// always set the clear, regardless of former state
+		s.inboxSyncQueue[uid.String()] = syncRes
+	case chat1.SyncInboxResType_INCREMENTAL:
+		lastTyp, _ := lastRes.SyncType()
+		switch lastTyp {
+		case chat1.SyncInboxResType_CURRENT:
+			// overwrite current
+			s.inboxSyncQueue[uid.String()] = syncRes
+		case chat1.SyncInboxResType_CLEAR:
+			// don't do anythign here, we will be sending this clear up
+		case chat1.SyncInboxResType_INCREMENTAL:
+			merge := func(oldItems []chat1.UnverifiedInboxUIItem, newItems []chat1.UnverifiedInboxUIItem) (res []chat1.UnverifiedInboxUIItem) {
+				newMap := make(map[string]chat1.UnverifiedInboxUIItem)
+				for _, newItem := range newItems {
+					newMap[newItem.ConvID] = newItem
+				}
+				for _, oldItem := range oldItems {
+					if newItem, ok := newMap[oldItem.ConvID]; ok {
+						delete(newMap, oldItem.ConvID)
+						res = append(res, newItem)
+					} else {
+						res = append(res, oldItem)
+					}
+				}
+				for _, v := range newMap {
+					res = append(res, v)
+				}
+				return res
+			}
+			lastInfo := lastRes.Incremental().Items
+			curInfo := syncRes.Incremental().Items
+			s.Debug(ctx, "queueInboxSync: merging incremental sync: oldItems: %d newItems: %d",
+				len(lastInfo), len(curInfo))
+			s.inboxSyncQueue[uid.String()] = chat1.NewChatSyncResultWithIncremental(
+				chat1.ChatSyncIncrementalInfo{
+					Items: merge(lastInfo, curInfo),
+				})
+		}
+	}
+}
+
+func (s *Syncer) sendInboxSyncResult(ctx context.Context, uid gregor1.UID) {
+	syncRes, ok := s.inboxSyncQueue[uid.String()]
+	if !ok {
+		s.Debug(ctx, "notifyInboxSyncForeground: no result for user: uid: %s", uid)
+		return
+	}
+	kuid := keybase1.UID(uid.String())
+	s.G().NotifyRouter.HandleChatInboxSynced(ctx, kuid, syncRes)
+}
+
+func (s *Syncer) notifyInboxSync(ctx context.Context, uid gregor1.UID, syncRes chat1.ChatSyncResult) {
+	s.inboxNotificationLock.Lock()
+	defer s.inboxNotificationLock.Unlock()
+	s.queueInboxSync(ctx, uid, syncRes)
+	state := s.G().AppState.State()
+	switch state {
+	case keybase1.AppState_FOREGROUND:
+		s.Debug(ctx, "notifyInboxSync: sending notification, in foreground")
+		s.sendInboxSyncResult(ctx, uid)
+	default:
+		s.Debug(ctx, "notifyInboxSync: not sending notification, app state: %v", state)
+	}
+}
+
 func (s *Syncer) sync(ctx context.Context, cli chat1.RemoteInterface, uid gregor1.UID,
 	syncRes *chat1.SyncChatRes) (err error) {
 	if !s.isConnected {
 		s.Debug(ctx, "Sync: aborting because currently offline")
 		return OfflineError{}
 	}
-	kuid := keybase1.UID(uid.String())
 
 	// Grab current on disk version
 	ibox := storage.NewInbox(s.G(), uid)
@@ -346,10 +429,10 @@ func (s *Syncer) sync(ctx context.Context, cli chat1.RemoteInterface, uid gregor
 			s.Debug(ctx, "Sync: failed to clear inbox: %s", err.Error())
 		}
 		// Send notifications for a full clear
-		s.G().NotifyRouter.HandleChatInboxSynced(ctx, kuid, chat1.NewChatSyncResultWithClear())
+		s.notifyInboxSync(ctx, uid, chat1.NewChatSyncResultWithClear())
 	case chat1.SyncInboxResType_CURRENT:
 		s.Debug(ctx, "Sync: version is current, standing pat: %v", vers)
-		s.G().NotifyRouter.HandleChatInboxSynced(ctx, kuid, chat1.NewChatSyncResultWithCurrent())
+		s.notifyInboxSync(ctx, uid, chat1.NewChatSyncResultWithCurrent())
 	case chat1.SyncInboxResType_INCREMENTAL:
 		incr := syncRes.InboxRes.Incremental()
 		s.Debug(ctx, "Sync: version out of date, but can incrementally sync: old vers: %v vers: %v convs: %d",
@@ -360,7 +443,7 @@ func (s *Syncer) sync(ctx context.Context, cli chat1.RemoteInterface, uid gregor
 			s.Debug(ctx, "Sync: failed to sync conversations to inbox: %s", err.Error())
 
 			// Send notifications for a full clear
-			s.G().NotifyRouter.HandleChatInboxSynced(ctx, kuid, chat1.NewChatSyncResultWithClear())
+			s.notifyInboxSync(ctx, uid, chat1.NewChatSyncResultWithClear())
 		} else {
 			s.handleMembersTypeChanged(ctx, uid, iboxSyncRes.MembersTypeChanged)
 			for _, expunge := range iboxSyncRes.Expunges {
@@ -372,12 +455,12 @@ func (s *Syncer) sync(ctx context.Context, cli chat1.RemoteInterface, uid gregor
 			if s.shouldDoFullReloadFromIncremental(ctx, iboxSyncRes, incr.Convs) {
 				// If we get word we should full clear the inbox (like if the user left a conversation),
 				// then just reload everything
-				s.G().NotifyRouter.HandleChatInboxSynced(ctx, kuid, chat1.NewChatSyncResultWithClear())
+				s.notifyInboxSync(ctx, uid, chat1.NewChatSyncResultWithClear())
 			} else {
 				// Send notifications for a successful partial sync
 				convs := utils.PresentRemoteConversations(
 					utils.RemoteConvs(s.filterNotifyConvs(ctx, incr.Convs, iboxSyncRes.TopicNameChanged)))
-				s.G().NotifyRouter.HandleChatInboxSynced(ctx, kuid,
+				s.notifyInboxSync(ctx, uid,
 					chat1.NewChatSyncResultWithIncremental(chat1.ChatSyncIncrementalInfo{
 						Items: convs,
 					}))
@@ -390,7 +473,7 @@ func (s *Syncer) sync(ctx context.Context, cli chat1.RemoteInterface, uid gregor
 				s.G().ConvSource.ClearFromDelete(ctx, uid, conv.GetConvID(), delMsg.GetMessageID())
 			}
 			// Queue background conversation loads
-			job := types.NewConvLoaderJob(conv.GetConvID(), &chat1.Pagination{Num: 50},
+			job := types.NewConvLoaderJob(conv.GetConvID(), &chat1.Pagination{Num: 100},
 				types.ConvLoaderPriorityHigh, newConvLoaderPagebackHook(s.G(), 0, 5))
 			if err := s.G().ConvLoader.Queue(ctx, job); err != nil {
 				s.Debug(ctx, "Sync: failed to queue conversation load: %s", err)
