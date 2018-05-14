@@ -963,7 +963,7 @@ func PresentMessageUnboxed(ctx context.Context, g *globals.Context, rawMsg chat1
 	uid gregor1.UID, convID chat1.ConversationID) (res chat1.UIMessage) {
 
 	miscErr := func(err error) chat1.UIMessage {
-		return chat1.NewUIMessageWithError(chat1.MessageUnboxedError{
+		return chat1.NewUIMessageWithError(chat1.UIMessageError{
 			ErrType:   chat1.MessageUnboxedErrorType_MISC,
 			ErrMsg:    err.Error(),
 			MessageID: rawMsg.GetMessageID(),

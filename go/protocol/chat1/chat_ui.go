@@ -486,6 +486,34 @@ func (o UIMessageOutbox) DeepCopy() UIMessageOutbox {
 	}
 }
 
+type UIMessageError struct {
+	SenderUsername     string                  `codec:"senderUsername" json:"senderUsername"`
+	SenderDeviceName   string                  `codec:"senderDeviceName" json:"senderDeviceName"`
+	ErrType            MessageUnboxedErrorType `codec:"errType" json:"errType"`
+	ErrMsg             string                  `codec:"errMsg" json:"errMsg"`
+	MessageID          MessageID               `codec:"messageID" json:"messageID"`
+	MessageType        MessageType             `codec:"messageType" json:"messageType"`
+	Ctime              gregor1.Time            `codec:"ctime" json:"ctime"`
+	IsEphemeral        bool                    `codec:"isEphemeral" json:"isEphemeral"`
+	IsEphemeralExpired bool                    `codec:"isEphemeralExpired" json:"isEphemeralExpired"`
+	Etime              gregor1.Time            `codec:"etime" json:"etime"`
+}
+
+func (o UIMessageError) DeepCopy() UIMessageError {
+	return UIMessageError{
+		SenderUsername:     o.SenderUsername,
+		SenderDeviceName:   o.SenderDeviceName,
+		ErrType:            o.ErrType.DeepCopy(),
+		ErrMsg:             o.ErrMsg,
+		MessageID:          o.MessageID.DeepCopy(),
+		MessageType:        o.MessageType.DeepCopy(),
+		Ctime:              o.Ctime.DeepCopy(),
+		IsEphemeral:        o.IsEphemeral,
+		IsEphemeralExpired: o.IsEphemeralExpired,
+		Etime:              o.Etime.DeepCopy(),
+	}
+}
+
 type MessageUnboxedState int
 
 const (
@@ -521,7 +549,7 @@ func (e MessageUnboxedState) String() string {
 type UIMessage struct {
 	State__       MessageUnboxedState        `codec:"state" json:"state"`
 	Valid__       *UIMessageValid            `codec:"valid,omitempty" json:"valid,omitempty"`
-	Error__       *MessageUnboxedError       `codec:"error,omitempty" json:"error,omitempty"`
+	Error__       *UIMessageError            `codec:"error,omitempty" json:"error,omitempty"`
 	Outbox__      *UIMessageOutbox           `codec:"outbox,omitempty" json:"outbox,omitempty"`
 	Placeholder__ *MessageUnboxedPlaceholder `codec:"placeholder,omitempty" json:"placeholder,omitempty"`
 }
@@ -562,7 +590,7 @@ func (o UIMessage) Valid() (res UIMessageValid) {
 	return *o.Valid__
 }
 
-func (o UIMessage) Error() (res MessageUnboxedError) {
+func (o UIMessage) Error() (res UIMessageError) {
 	if o.State__ != MessageUnboxedState_ERROR {
 		panic("wrong case accessed")
 	}
@@ -599,7 +627,7 @@ func NewUIMessageWithValid(v UIMessageValid) UIMessage {
 	}
 }
 
-func NewUIMessageWithError(v MessageUnboxedError) UIMessage {
+func NewUIMessageWithError(v UIMessageError) UIMessage {
 	return UIMessage{
 		State__: MessageUnboxedState_ERROR,
 		Error__: &v,
@@ -630,7 +658,7 @@ func (o UIMessage) DeepCopy() UIMessage {
 			tmp := (*x).DeepCopy()
 			return &tmp
 		})(o.Valid__),
-		Error__: (func(x *MessageUnboxedError) *MessageUnboxedError {
+		Error__: (func(x *UIMessageError) *UIMessageError {
 			if x == nil {
 				return nil
 			}

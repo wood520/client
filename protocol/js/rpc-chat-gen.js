@@ -1371,7 +1371,9 @@ export type UIAssetUrlInfo = $ReadOnly<{previewUrl: String, fullUrl: String, mim
 
 export type UIChannelNameMention = $ReadOnly<{name: String, convID: String}>
 
-export type UIMessage = {state: 1, valid: ?UIMessageValid} | {state: 2, error: ?MessageUnboxedError} | {state: 3, outbox: ?UIMessageOutbox} | {state: 4, placeholder: ?MessageUnboxedPlaceholder}
+export type UIMessage = {state: 1, valid: ?UIMessageValid} | {state: 2, error: ?UIMessageError} | {state: 3, outbox: ?UIMessageOutbox} | {state: 4, placeholder: ?MessageUnboxedPlaceholder}
+
+export type UIMessageError = $ReadOnly<{senderUsername: String, senderDeviceName: String, errType: MessageUnboxedErrorType, errMsg: String, messageID: MessageID, messageType: MessageType, ctime: Gregor1.Time, isEphemeral: Boolean, isEphemeralExpired: Boolean, etime: Gregor1.Time}>
 
 export type UIMessageOutbox = $ReadOnly<{state: OutboxState, outboxID: String, messageType: MessageType, body: String, ctime: Gregor1.Time, ordinal: Double}>
 

@@ -132,6 +132,19 @@ protocol chatUi {
     double ordinal;
   }
 
+  record UIMessageError {
+    string senderUsername;
+    string senderDeviceName;
+    MessageUnboxedErrorType errType;
+    string errMsg;
+    MessageID messageID;
+    MessageType messageType;
+    gregor1.Time ctime;
+    boolean isEphemeral;
+    boolean isEphemeralExpired;
+    gregor1.Time etime;
+  }
+
   enum MessageUnboxedState {
     VALID_1,
     ERROR_2,
@@ -141,7 +154,7 @@ protocol chatUi {
 
   variant UIMessage switch (MessageUnboxedState state) {
     case VALID: UIMessageValid;
-    case ERROR: MessageUnboxedError;
+    case ERROR: UIMessageError;
     case OUTBOX: UIMessageOutbox;
     case PLACEHOLDER: MessageUnboxedPlaceholder;
   }
