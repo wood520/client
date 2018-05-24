@@ -9,6 +9,7 @@ protocol gregor {
         string Action;
         InboxVers inboxVers;
         ConversationID convID;
+        TopicType topicType;
         union { null, UnreadUpdate } unreadUpdate;
     }
 

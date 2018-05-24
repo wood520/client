@@ -780,7 +780,7 @@ export type FailedMessageInfo = $ReadOnly<{outboxRecords?: ?Array<OutboxRecord>,
 
 export type FindConversationsLocalRes = $ReadOnly<{conversations?: ?Array<ConversationLocal>, offline: Boolean, rateLimits?: ?Array<RateLimit>, identifyFailures?: ?Array<Keybase1.TLFIdentifyFailure>}>
 
-export type GenericPayload = $ReadOnly<{Action: String, inboxVers: InboxVers, convID: ConversationID, unreadUpdate?: ?UnreadUpdate}>
+export type GenericPayload = $ReadOnly<{Action: String, inboxVers: InboxVers, convID: ConversationID, topicType: TopicType, unreadUpdate?: ?UnreadUpdate}>
 
 export type GetConversationForCLILocalQuery = $ReadOnly<{markAsRead: Boolean, MessageTypes?: ?Array<MessageType>, Since?: ?String, limit: UnreadFirstNumLimit, conv: ConversationLocal}>
 

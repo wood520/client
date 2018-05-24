@@ -31,6 +31,10 @@
           "name": "convID"
         },
         {
+          "type": "TopicType",
+          "name": "topicType"
+        },
+        {
           "type": [
             null,
             "UnreadUpdate"

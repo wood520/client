@@ -13,6 +13,7 @@ type GenericPayload struct {
 	Action       string         `codec:"Action" json:"Action"`
 	InboxVers    InboxVers      `codec:"inboxVers" json:"inboxVers"`
 	ConvID       ConversationID `codec:"convID" json:"convID"`
+	TopicType    TopicType      `codec:"topicType" json:"topicType"`
 	UnreadUpdate *UnreadUpdate  `codec:"unreadUpdate,omitempty" json:"unreadUpdate,omitempty"`
 }
 
@@ -21,6 +22,7 @@ func (o GenericPayload) DeepCopy() GenericPayload {
 		Action:    o.Action,
 		InboxVers: o.InboxVers.DeepCopy(),
 		ConvID:    o.ConvID.DeepCopy(),
+		TopicType: o.TopicType.DeepCopy(),
 		UnreadUpdate: (func(x *UnreadUpdate) *UnreadUpdate {
 			if x == nil {
 				return nil
