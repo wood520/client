@@ -599,7 +599,6 @@ func (s *HybridInboxSource) ReadUnverified(ctx context.Context, uid gregor1.UID,
 
 	var cerr storage.Error
 	inboxStore := storage.NewInbox(s.G(), uid)
-
 	// Try local storage (if enabled)
 	if useLocalData {
 		var vers chat1.InboxVers
@@ -632,10 +631,26 @@ func (s *HybridInboxSource) ReadUnverified(ctx context.Context, uid gregor1.UID,
 			return res, err
 		}
 
-		// Write out to local storage only if we are using local data
+		// Write out to local storage only if we are using local data (no errors here fail out the call)
 		if useLocalData {
-			if cerr = inboxStore.Merge(ctx, res.Version, utils.PluckConvs(res.ConvsUnverified), query, p); cerr != nil {
-				s.Debug(ctx, "ReadUnverified: failed to write inbox to local storage: %s", cerr.Error())
+			// If our local inbox version is somehow different from the results of this query then we will
+			// resync rather than trying a blind merge (which could end up clearing the whole inbox cache)
+			inboxVers, err := inboxStore.Version(ctx)
+			if err != nil {
+				s.Debug(ctx, "ReadUnverified: data write: failed to read inbox version: %s", err)
+				return res, nil
+			}
+			if inboxVers != res.Version {
+				s.Debug(ctx, "ReadUnverified: data write: inbox version mismatch, syncing: %v != %v",
+					inboxVers, res.Version)
+				if err := s.G().Syncer.Sync(ctx, s.getChatInterface(), uid, nil); err != nil {
+					s.Debug(ctx, "ReadUnverified: data write: failed to sync: %s", err)
+					return res, nil
+				}
+			} else {
+				if cerr = inboxStore.Merge(ctx, res.Version, utils.PluckConvs(res.ConvsUnverified), query, p); cerr != nil {
+					s.Debug(ctx, "ReadUnverified: failed to write inbox to local storage: %s", cerr)
+				}
 			}
 		}
 	}
