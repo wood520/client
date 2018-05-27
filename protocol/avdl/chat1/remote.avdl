@@ -109,7 +109,12 @@ protocol remote {
     union { null, RateLimit } rateLimit;
   }
 
-  GetInboxRemoteRes getInboxRemote(InboxVers vers, union { null, GetInboxQuery } query, union { null, Pagination } pagination);
+  enum GetInboxRemoteFetchMode {
+    BASIC_0,
+    SYNC_1
+  }
+
+  GetInboxRemoteRes getInboxRemote(InboxVers vers, GetInboxRemoteFetchMode fetchMode, union { null, GetInboxQuery } query, union { null, Pagination } pagination);
   GetThreadRemoteRes getThreadRemote(ConversationID conversationID, union { null, GetThreadQuery } query, union { null, Pagination } pagination);
   GetPublicConversationsRes getPublicConversations(TLFID tlfID, TopicType topicType, boolean summarizeMaxMsgs);
 

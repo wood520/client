@@ -1110,7 +1110,8 @@
       "name": "InboxResType",
       "symbols": [
         "VERSIONHIT_0",
-        "FULL_1"
+        "FULL_1",
+        "SYNC_2"
       ]
     },
     {
@@ -1127,6 +1128,37 @@
             "items": "Conversation"
           },
           "name": "conversations"
+        },
+        {
+          "type": [
+            null,
+            "Pagination"
+          ],
+          "name": "pagination"
+        }
+      ]
+    },
+    {
+      "type": "record",
+      "name": "InboxViewSync",
+      "fields": [
+        {
+          "type": "InboxVers",
+          "name": "vers"
+        },
+        {
+          "type": {
+            "type": "array",
+            "items": "Conversation"
+          },
+          "name": "convsFromQuery"
+        },
+        {
+          "type": {
+            "type": "array",
+            "items": "Conversation"
+          },
+          "name": "convsFromSync"
         },
         {
           "type": [
@@ -1158,6 +1190,13 @@
             "def": false
           },
           "body": "InboxViewFull"
+        },
+        {
+          "label": {
+            "name": "SYNC",
+            "def": false
+          },
+          "body": "InboxViewSync"
         }
       ]
     },

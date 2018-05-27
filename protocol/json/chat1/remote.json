@@ -265,6 +265,14 @@
     },
     {
       "type": "enum",
+      "name": "GetInboxRemoteFetchMode",
+      "symbols": [
+        "BASIC_0",
+        "SYNC_1"
+      ]
+    },
+    {
+      "type": "enum",
       "name": "ChannelMention",
       "symbols": [
         "NONE_0",
@@ -583,6 +591,10 @@
         {
           "name": "vers",
           "type": "InboxVers"
+        },
+        {
+          "name": "fetchMode",
+          "type": "GetInboxRemoteFetchMode"
         },
         {
           "name": "query",

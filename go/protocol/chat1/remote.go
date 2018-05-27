@@ -316,6 +316,32 @@ func (o GetPublicConversationsRes) DeepCopy() GetPublicConversationsRes {
 	}
 }
 
+type GetInboxRemoteFetchMode int
+
+const (
+	GetInboxRemoteFetchMode_BASIC GetInboxRemoteFetchMode = 0
+	GetInboxRemoteFetchMode_SYNC  GetInboxRemoteFetchMode = 1
+)
+
+func (o GetInboxRemoteFetchMode) DeepCopy() GetInboxRemoteFetchMode { return o }
+
+var GetInboxRemoteFetchModeMap = map[string]GetInboxRemoteFetchMode{
+	"BASIC": 0,
+	"SYNC":  1,
+}
+
+var GetInboxRemoteFetchModeRevMap = map[GetInboxRemoteFetchMode]string{
+	0: "BASIC",
+	1: "SYNC",
+}
+
+func (e GetInboxRemoteFetchMode) String() string {
+	if v, ok := GetInboxRemoteFetchModeRevMap[e]; ok {
+		return v
+	}
+	return ""
+}
+
 type ChannelMention int
 
 const (
@@ -766,9 +792,10 @@ func (o SweepRes) DeepCopy() SweepRes {
 }
 
 type GetInboxRemoteArg struct {
-	Vers       InboxVers      `codec:"vers" json:"vers"`
-	Query      *GetInboxQuery `codec:"query,omitempty" json:"query,omitempty"`
-	Pagination *Pagination    `codec:"pagination,omitempty" json:"pagination,omitempty"`
+	Vers       InboxVers               `codec:"vers" json:"vers"`
+	FetchMode  GetInboxRemoteFetchMode `codec:"fetchMode" json:"fetchMode"`
+	Query      *GetInboxQuery          `codec:"query,omitempty" json:"query,omitempty"`
+	Pagination *Pagination             `codec:"pagination,omitempty" json:"pagination,omitempty"`
 }
 
 type GetThreadRemoteArg struct {

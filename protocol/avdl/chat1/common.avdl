@@ -431,7 +431,8 @@
 
   enum InboxResType {
     VERSIONHIT_0,
-    FULL_1
+    FULL_1,
+    SYNC_2
   }
 
   record InboxViewFull {
@@ -440,9 +441,17 @@
     union { null, Pagination } pagination;
   }
 
+  record InboxViewSync {
+    InboxVers vers;
+    array<Conversation> convsFromQuery;
+    array<Conversation> convsFromSync;
+    union { null, Pagination } pagination;
+  }
+
   variant InboxView switch (InboxResType rtype) {
     case VERSIONHIT: void;
     case FULL: InboxViewFull;
+    case SYNC: InboxViewSync;
   }
 
   enum RetentionPolicyType {

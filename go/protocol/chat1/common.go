@@ -1368,6 +1368,7 @@ type InboxResType int
 const (
 	InboxResType_VERSIONHIT InboxResType = 0
 	InboxResType_FULL       InboxResType = 1
+	InboxResType_SYNC       InboxResType = 2
 )
 
 func (o InboxResType) DeepCopy() InboxResType { return o }
@@ -1375,11 +1376,13 @@ func (o InboxResType) DeepCopy() InboxResType { return o }
 var InboxResTypeMap = map[string]InboxResType{
 	"VERSIONHIT": 0,
 	"FULL":       1,
+	"SYNC":       2,
 }
 
 var InboxResTypeRevMap = map[InboxResType]string{
 	0: "VERSIONHIT",
 	1: "FULL",
+	2: "SYNC",
 }
 
 func (e InboxResType) String() string {
@@ -1419,9 +1422,52 @@ func (o InboxViewFull) DeepCopy() InboxViewFull {
 	}
 }
 
+type InboxViewSync struct {
+	Vers           InboxVers      `codec:"vers" json:"vers"`
+	ConvsFromQuery []Conversation `codec:"convsFromQuery" json:"convsFromQuery"`
+	ConvsFromSync  []Conversation `codec:"convsFromSync" json:"convsFromSync"`
+	Pagination     *Pagination    `codec:"pagination,omitempty" json:"pagination,omitempty"`
+}
+
+func (o InboxViewSync) DeepCopy() InboxViewSync {
+	return InboxViewSync{
+		Vers: o.Vers.DeepCopy(),
+		ConvsFromQuery: (func(x []Conversation) []Conversation {
+			if x == nil {
+				return nil
+			}
+			var ret []Conversation
+			for _, v := range x {
+				vCopy := v.DeepCopy()
+				ret = append(ret, vCopy)
+			}
+			return ret
+		})(o.ConvsFromQuery),
+		ConvsFromSync: (func(x []Conversation) []Conversation {
+			if x == nil {
+				return nil
+			}
+			var ret []Conversation
+			for _, v := range x {
+				vCopy := v.DeepCopy()
+				ret = append(ret, vCopy)
+			}
+			return ret
+		})(o.ConvsFromSync),
+		Pagination: (func(x *Pagination) *Pagination {
+			if x == nil {
+				return nil
+			}
+			tmp := (*x).DeepCopy()
+			return &tmp
+		})(o.Pagination),
+	}
+}
+
 type InboxView struct {
 	Rtype__ InboxResType   `codec:"rtype" json:"rtype"`
 	Full__  *InboxViewFull `codec:"full,omitempty" json:"full,omitempty"`
+	Sync__  *InboxViewSync `codec:"sync,omitempty" json:"sync,omitempty"`
 }
 
 func (o *InboxView) Rtype() (ret InboxResType, err error) {
@@ -1429,6 +1475,11 @@ func (o *InboxView) Rtype() (ret InboxResType, err error) {
 	case InboxResType_FULL:
 		if o.Full__ == nil {
 			err = errors.New("unexpected nil value for Full__")
+			return ret, err
+		}
+	case InboxResType_SYNC:
+		if o.Sync__ == nil {
+			err = errors.New("unexpected nil value for Sync__")
 			return ret, err
 		}
 	}
@@ -1445,6 +1496,16 @@ func (o InboxView) Full() (res InboxViewFull) {
 	return *o.Full__
 }
 
+func (o InboxView) Sync() (res InboxViewSync) {
+	if o.Rtype__ != InboxResType_SYNC {
+		panic("wrong case accessed")
+	}
+	if o.Sync__ == nil {
+		return
+	}
+	return *o.Sync__
+}
+
 func NewInboxViewWithVersionhit() InboxView {
 	return InboxView{
 		Rtype__: InboxResType_VERSIONHIT,
@@ -1458,6 +1519,13 @@ func NewInboxViewWithFull(v InboxViewFull) InboxView {
 	}
 }
 
+func NewInboxViewWithSync(v InboxViewSync) InboxView {
+	return InboxView{
+		Rtype__: InboxResType_SYNC,
+		Sync__:  &v,
+	}
+}
+
 func (o InboxView) DeepCopy() InboxView {
 	return InboxView{
 		Rtype__: o.Rtype__.DeepCopy(),
@@ -1468,6 +1536,13 @@ func (o InboxView) DeepCopy() InboxView {
 			tmp := (*x).DeepCopy()
 			return &tmp
 		})(o.Full__),
+		Sync__: (func(x *InboxViewSync) *InboxViewSync {
+			if x == nil {
+				return nil
+			}
+			tmp := (*x).DeepCopy()
+			return &tmp
+		})(o.Sync__),
 	}
 }
 

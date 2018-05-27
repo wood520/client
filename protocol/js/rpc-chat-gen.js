@@ -54,6 +54,7 @@ export const commonGlobalAppNotificationSetting = {
 export const commonInboxResType = {
   versionhit: 0,
   full: 1,
+  sync: 2,
 }
 
 export const commonMessageType = {
@@ -430,6 +431,11 @@ export const remoteGetGlobalAppNotificationSettingsRpcChannelMap = (configKeys: 
 
 export const remoteGetGlobalAppNotificationSettingsRpcPromise = (request: RemoteGetGlobalAppNotificationSettingsRpcParam): Promise<RemoteGetGlobalAppNotificationSettingsResult> => new Promise((resolve, reject) => engine()._rpcOutgoing('chat.1.remote.getGlobalAppNotificationSettings', request, (error: RPCError, result: RemoteGetGlobalAppNotificationSettingsResult) => (error ? reject(error) : resolve(result))))
 
+export const remoteGetInboxRemoteFetchMode = {
+  basic: 0,
+  sync: 1,
+}
+
 export const remoteGetInboxRemoteRpcChannelMap = (configKeys: Array<string>, request: RemoteGetInboxRemoteRpcParam): EngineChannel => engine()._channelMapRpcHelper(configKeys, 'chat.1.remote.getInboxRemote', request)
 
 export const remoteGetInboxRemoteRpcPromise = (request: RemoteGetInboxRemoteRpcParam): Promise<RemoteGetInboxRemoteResult> => new Promise((resolve, reject) => engine()._rpcOutgoing('chat.1.remote.getInboxRemote', request, (error: RPCError, result: RemoteGetInboxRemoteResult) => (error ? reject(error) : resolve(result))))
@@ -801,6 +807,10 @@ export type GetInboxLocalRes = $ReadOnly<{conversationsUnverified?: ?Array<Conve
 
 export type GetInboxQuery = $ReadOnly<{convID?: ?ConversationID, topicType?: ?TopicType, tlfID?: ?TLFID, tlfVisibility?: ?Keybase1.TLFVisibility, before?: ?Gregor1.Time, after?: ?Gregor1.Time, oneChatTypePerTLF?: ?Boolean, status?: ?Array<ConversationStatus>, memberStatus?: ?Array<ConversationMemberStatus>, existences?: ?Array<ConversationExistence>, membersTypes?: ?Array<ConversationMembersType>, convIDs?: ?Array<ConversationID>, unreadOnly: Boolean, readOnly: Boolean, computeActiveList: Boolean, summarizeMaxMsgs: Boolean}>
 
+export type GetInboxRemoteFetchMode =
+  | 0 // BASIC_0
+  | 1 // SYNC_1
+
 export type GetInboxRemoteRes = $ReadOnly<{inbox: InboxView, rateLimit?: ?RateLimit}>
 
 export type GetInboxSummaryForCLILocalQuery = $ReadOnly<{topicType: TopicType, after: String, before: String, visibility: Keybase1.TLFVisibility, status?: ?Array<ConversationStatus>, unreadFirst: Boolean, unreadFirstLimit: UnreadFirstNumLimit, activitySortedLimit: Int}>
@@ -872,6 +882,7 @@ export type HeaderPlaintextVersion =
 export type InboxResType =
   | 0 // VERSIONHIT_0
   | 1 // FULL_1
+  | 2 // SYNC_2
 
 export type InboxUIItem = $ReadOnly<{convID: String, isEmpty: Boolean, name: String, snippet: String, channel: String, headline: String, visibility: Keybase1.TLFVisibility, participants?: ?Array<String>, fullNames: {[key: string]: String}, resetParticipants?: ?Array<String>, status: ConversationStatus, membersType: ConversationMembersType, memberStatus: ConversationMemberStatus, teamType: TeamType, time: Gregor1.Time, notifications?: ?ConversationNotificationInfo, creatorInfo?: ?ConversationCreatorInfoLocal, version: ConversationVers, maxMsgID: MessageID, convRetention?: ?RetentionPolicy, teamRetention?: ?RetentionPolicy, finalizeInfo?: ?ConversationFinalizeInfo, supersedes?: ?Array<ConversationMetadata>, supersededBy?: ?Array<ConversationMetadata>}>
 
@@ -883,9 +894,11 @@ export type InboxVers = Uint64
 
 export type InboxVersInfo = $ReadOnly<{uid: Gregor1.UID, vers: InboxVers}>
 
-export type InboxView = {rtype: 0} | {rtype: 1, full: ?InboxViewFull}
+export type InboxView = {rtype: 0} | {rtype: 1, full: ?InboxViewFull} | {rtype: 2, sync: ?InboxViewSync}
 
 export type InboxViewFull = $ReadOnly<{vers: InboxVers, conversations?: ?Array<Conversation>, pagination?: ?Pagination}>
+
+export type InboxViewSync = $ReadOnly<{vers: InboxVers, convsFromQuery?: ?Array<Conversation>, convsFromSync?: ?Array<Conversation>, pagination?: ?Pagination}>
 
 export type IncomingMessage = $ReadOnly<{message: UIMessage, convID: ConversationID, displayDesktopNotification: Boolean, desktopNotificationSnippet: String, conv?: ?InboxUIItem, pagination?: ?UIPagination}>
 
@@ -1203,7 +1216,7 @@ export type RemoteDeleteConversationRpcParam = $ReadOnly<{convID: ConversationID
 
 export type RemoteGetGlobalAppNotificationSettingsRpcParam = ?$ReadOnly<{incomingCallMap?: IncomingCallMapType, waitingHandler?: WaitingHandlerType}>
 
-export type RemoteGetInboxRemoteRpcParam = $ReadOnly<{vers: InboxVers, query?: ?GetInboxQuery, pagination?: ?Pagination, incomingCallMap?: IncomingCallMapType, waitingHandler?: WaitingHandlerType}>
+export type RemoteGetInboxRemoteRpcParam = $ReadOnly<{vers: InboxVers, fetchMode: GetInboxRemoteFetchMode, query?: ?GetInboxQuery, pagination?: ?Pagination, incomingCallMap?: IncomingCallMapType, waitingHandler?: WaitingHandlerType}>
 
 export type RemoteGetInboxVersionRpcParam = $ReadOnly<{uid: Gregor1.UID, incomingCallMap?: IncomingCallMapType, waitingHandler?: WaitingHandlerType}>
 
