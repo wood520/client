@@ -177,6 +177,10 @@
     // Extended list of conversation IDs to fetch (don't need to set convID, if convID is set then
     // this it will be like appending it to this list)
     array<ConversationID> convIDs;
+    // A list of conversation IDs to include in the result in addition to other conversations
+    // that match the query (these in the list will be returned even if excluded by the rest of
+    // thr query)
+    array<ConversationID> convIDsOr;
 
     boolean unreadOnly;
     boolean readOnly;

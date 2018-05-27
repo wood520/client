@@ -575,6 +575,7 @@ type GetInboxQuery struct {
 	Existences        []ConversationExistence    `codec:"existences" json:"existences"`
 	MembersTypes      []ConversationMembersType  `codec:"membersTypes" json:"membersTypes"`
 	ConvIDs           []ConversationID           `codec:"convIDs" json:"convIDs"`
+	ConvIDsOr         []ConversationID           `codec:"convIDsOr" json:"convIDsOr"`
 	UnreadOnly        bool                       `codec:"unreadOnly" json:"unreadOnly"`
 	ReadOnly          bool                       `codec:"readOnly" json:"readOnly"`
 	ComputeActiveList bool                       `codec:"computeActiveList" json:"computeActiveList"`
@@ -687,6 +688,17 @@ func (o GetInboxQuery) DeepCopy() GetInboxQuery {
 			}
 			return ret
 		})(o.ConvIDs),
+		ConvIDsOr: (func(x []ConversationID) []ConversationID {
+			if x == nil {
+				return nil
+			}
+			var ret []ConversationID
+			for _, v := range x {
+				vCopy := v.DeepCopy()
+				ret = append(ret, vCopy)
+			}
+			return ret
+		})(o.ConvIDsOr),
 		UnreadOnly:        o.UnreadOnly,
 		ReadOnly:          o.ReadOnly,
 		ComputeActiveList: o.ComputeActiveList,
