@@ -554,15 +554,17 @@ const setupChatHandlers = () => {
             : null
         }
         case RPCChatTypes.notifyChatChatActivityType.membersUpdate:
-          const convID = activity.membersUpdate && activity.membersUpdate.convID
-          return convID
-            ? [
-                Chat2Gen.createMetaRequestTrusted({
-                  conversationIDKeys: [Types.conversationIDToKey(convID)],
-                  force: true,
-                }),
-              ]
-            : null
+          const convIDs = activity.membersUpdate && activity.membersUpdate.convIDs
+          const conversationIDKeys = (convIDs || []).reduce((arr, convID) => {
+            arr.push(Types.conversationIDToKey(convID))
+            return arr
+          }, [])
+          return [
+            Chat2Gen.createMetaRequestTrusted({
+              conversationIDKeys,
+              force: true,
+            }),
+          ]
         case RPCChatTypes.notifyChatChatActivityType.setAppNotificationSettings:
           const setAppNotificationSettings: ?RPCChatTypes.SetAppNotificationSettingsInfo =
             activity.setAppNotificationSettings

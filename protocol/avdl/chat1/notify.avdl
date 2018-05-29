@@ -55,9 +55,7 @@ protocol NotifyChat {
   }
 
   record MembersUpdateInfo {
-    ConversationID convID;
-    string member;
-    ConversationMemberStatus status;
+    array<ConversationID> convIDs;
   }
 
   record TeamTypeInfo {

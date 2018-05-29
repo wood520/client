@@ -621,7 +621,7 @@ func (g *PushHandler) Activity(ctx context.Context, m gregor.OutOfBandMessage) (
 			g.badger.PushChatUpdate(*gm.UnreadUpdate, gm.InboxVers)
 		}
 		if activity != nil {
-			g.notifyNewChatActivity(ctx, m.UID(), convID, conv, activity)
+			g.notifyNewChatActivity(ctx, m.UID(), conv, activity)
 		} else {
 			g.Debug(ctx, "chat activity: skipping notify, activity is nil")
 		}
@@ -630,7 +630,7 @@ func (g *PushHandler) Activity(ctx context.Context, m gregor.OutOfBandMessage) (
 }
 
 func (g *PushHandler) notifyNewChatActivity(ctx context.Context, uid gregor.UID,
-	convID chat1.ConversationID, conv *chat1.ConversationLocal, activity *chat1.ChatActivity) error {
+	conv *chat1.ConversationLocal, activity *chat1.ChatActivity) error {
 	kbUID, err := keybase1.UIDFromString(hex.EncodeToString(uid.Bytes()))
 	if err != nil {
 		return err
@@ -666,30 +666,11 @@ func (g *PushHandler) notifyReset(ctx context.Context, uid gregor1.UID,
 }
 
 func (g *PushHandler) notifyMembersUpdate(ctx context.Context, uid gregor1.UID,
-	member chat1.ConversationMember, status chat1.ConversationMemberStatus) {
-
-	unameFailed := false
-	name, err := g.G().GetUPAKLoader().LookupUsername(ctx, keybase1.UID(member.Uid.String()))
-	if err != nil {
-		g.Debug(ctx, "notifyMembersUpdate: failed to lookup username for: %s msg: %s", member.Uid,
-			err.Error())
-		unameFailed = true
-	}
-
-	if !unameFailed {
-		activity := chat1.NewChatActivityWithMembersUpdate(chat1.MembersUpdateInfo{
-			ConvID: member.ConvID,
-			Member: name.String(),
-			Status: status,
-		})
-		g.notifyNewChatActivity(ctx, uid, member.ConvID, nil, &activity)
-	} else {
-		supdate := []chat1.ConversationStaleUpdate{chat1.ConversationStaleUpdate{
-			ConvID:     member.ConvID,
-			UpdateType: chat1.StaleUpdateType_NEWACTIVITY,
-		}}
-		g.G().Syncer.SendChatStaleNotifications(ctx, uid, supdate, false)
-	}
+	membersRes types.MembershipUpdateRes) {
+	activity := chat1.NewChatActivityWithMembersUpdate(chat1.MembersUpdateInfo{
+		ConvIDs: membersRes.AllOtherConvs(),
+	})
+	g.notifyNewChatActivity(ctx, uid, nil, &activity)
 }
 
 func (g *PushHandler) Typing(ctx context.Context, m gregor.OutOfBandMessage) (err error) {
@@ -823,15 +804,7 @@ func (g *PushHandler) MembershipUpdate(ctx context.Context, m gregor.OutOfBandMe
 		for _, c := range updateRes.UserResetConvs {
 			g.notifyReset(ctx, uid, c)
 		}
-		for _, cm := range updateRes.OthersJoinedConvs {
-			g.notifyMembersUpdate(ctx, uid, cm, chat1.ConversationMemberStatus_ACTIVE)
-		}
-		for _, cm := range updateRes.OthersRemovedConvs {
-			g.notifyMembersUpdate(ctx, uid, cm, chat1.ConversationMemberStatus_REMOVED)
-		}
-		for _, cm := range updateRes.OthersResetConvs {
-			g.notifyMembersUpdate(ctx, uid, cm, chat1.ConversationMemberStatus_RESET)
-		}
+		g.notifyMembersUpdate(ctx, uid, updateRes)
 
 		// Fire off badger updates
 		if g.badger != nil {

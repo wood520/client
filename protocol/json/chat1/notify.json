@@ -156,16 +156,11 @@
       "name": "MembersUpdateInfo",
       "fields": [
         {
-          "type": "ConversationID",
-          "name": "convID"
-        },
-        {
-          "type": "string",
-          "name": "member"
-        },
-        {
-          "type": "ConversationMemberStatus",
-          "name": "status"
+          "type": {
+            "type": "array",
+            "items": "ConversationID"
+          },
+          "name": "convIDs"
         }
       ]
     },
