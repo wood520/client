@@ -167,6 +167,7 @@ func (o *Outbox) PushMessage(ctx context.Context, convID chat1.ConversationID,
 	return rec, nil
 }
 
+// PeekFirst reeturns the first item in the outbox, optionally peeking an error
 func (o *Outbox) PeekFirst(ctx context.Context, includeErrors bool) (res chat1.OutboxRecord, err error) {
 	locks.Outbox.Lock()
 	defer locks.Outbox.Unlock()
@@ -192,6 +193,49 @@ func (o *Outbox) PeekFirst(ctx context.Context, includeErrors bool) (res chat1.O
 		}
 	}
 	return res, MissError{}
+}
+
+// PullAllConversations grabs all outbox entries for the current outbox, and optionally deletes them
+// from storage
+func (o *Outbox) PullAllConversations(ctx context.Context, includeErrors bool, remove bool) ([]chat1.OutboxRecord, error) {
+	locks.Outbox.Lock()
+	defer locks.Outbox.Unlock()
+
+	// Read outbox for the user
+	obox, err := o.readDiskOutbox(ctx)
+	if err != nil {
+		return nil, o.maybeNuke(err, o.dbKey())
+	}
+
+	var res, errors []chat1.OutboxRecord
+	for _, obr := range obox.Records {
+		state, err := obr.State.State()
+		if err != nil {
+			o.Debug(ctx, "PullAllConversations: unknown state item: skipping: err: %s", err.Error())
+			continue
+		}
+		if state == chat1.OutboxStateType_ERROR {
+			if includeErrors {
+				res = append(res, obr)
+			} else {
+				errors = append(errors, obr)
+			}
+		} else {
+			res = append(res, obr)
+		}
+	}
+	if remove {
+		// Write out box
+		obox.Records = errors
+		obox.Version = outboxVersion
+		if err := o.writeDiskBox(ctx, o.dbKey(), obox); err != nil {
+			return nil, o.maybeNuke(NewInternalError(ctx, o.DebugLabeler,
+				"error writing outbox: err: %s", err.Error()), o.dbKey())
+		}
+
+	}
+
+	return res, nil
 }
 
 // RecordFailedAttempt will either modify an existing matching record (if sending) to next attempt
