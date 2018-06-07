@@ -878,8 +878,8 @@ func (s *Deliverer) deliverLoop() {
 		case <-s.G().Clock().After(s.G().Env.GetChatDelivererInterval()):
 		}
 
-		// Fetch outbox
-		obrs, err := s.outbox.PullAllConversations(bgctx, false, true)
+		// Peek first sendable outbox item
+		obr, err := s.outbox.PeekFirst(bgctx, false)
 		if err != nil {
 			if _, ok := err.(storage.MissError); !ok {
 				s.Debug(bgctx, "unable to pull outbox: uid: %s err: %s", s.outbox.GetUID(),
@@ -887,52 +887,41 @@ func (s *Deliverer) deliverLoop() {
 			}
 			continue
 		}
-		if len(obrs) > 0 {
-			s.Debug(bgctx, "flushing %d items from the outbox: uid: %s", len(obrs), s.outbox.GetUID())
-		}
 
-		// Send messages
+		// Attempt to send
 		var breaks []keybase1.TLFIdentifyFailure
-		for _, obr := range obrs {
-
-			bctx := Context(context.Background(), s.G(), obr.IdentifyBehavior, &breaks,
-				s.identNotifier)
-			if s.testingNameInfoSource != nil {
-				CtxKeyFinder(bctx, s.G()).SetNameInfoSourceOverride(s.testingNameInfoSource)
-			}
-			if !s.connected {
-				err = errors.New("disconnected from chat server")
-			} else if s.clock.Now().Sub(obr.Ctime.Time()) > 10*time.Minute {
-				// If we are re-trying a message after 10 minutes, let's just give up. These times can
-				// get very long if the app is suspended on mobile.
-				s.Debug(bgctx, "expiring pending message because it is too old: obid: %s dur: %v",
-					obr.OutboxID, s.clock.Now().Sub(obr.Ctime.Time()))
-				err = delivererExpireError{}
+		bctx := Context(context.Background(), s.G(), obr.IdentifyBehavior, &breaks, s.identNotifier)
+		if s.testingNameInfoSource != nil {
+			CtxKeyFinder(bctx, s.G()).SetNameInfoSourceOverride(s.testingNameInfoSource)
+		}
+		if !s.connected {
+			err = errors.New("disconnected from chat server")
+		} else if s.clock.Now().Sub(obr.Ctime.Time()) > 10*time.Minute {
+			// If we are re-trying a message after 10 minutes, let's just give up. These times can
+			// get very long if the app is suspended on mobile.
+			s.Debug(bgctx, "expiring pending message because it is too old: obid: %s dur: %v",
+				obr.OutboxID, s.clock.Now().Sub(obr.Ctime.Time()))
+			err = delivererExpireError{}
+		} else {
+			_, _, err = s.sender.Send(bctx, obr.ConvID, obr.Msg, 0, nil)
+		}
+		if err != nil {
+			s.Debug(bgctx, "failed to send msg: uid: %s convID: %s obid: %s err: %s attempts: %d",
+				s.outbox.GetUID(), obr.ConvID, obr.OutboxID, err.Error(), obr.State.Sending())
+			// Process failure. If we determine that the message is unrecoverable, then bail out.
+			if errTyp, ok := s.doNotRetryFailure(bgctx, obr, err); ok {
+				// Record failure if we hit this case
+				s.Debug(bgctx, "failure condition reached, marking as error and notifying: obid: %s errTyp: %v attempts: %d", obr.OutboxID, errTyp, obr.State.Sending())
+				if err := s.failMessage(bgctx, obr, chat1.OutboxStateError{
+					Message: err.Error(),
+					Typ:     errTyp,
+				}); err != nil {
+					s.Debug(bgctx, "unable to fail message: err: %s", err.Error())
+				}
 			} else {
-				_, _, err = s.sender.Send(bctx, obr.ConvID, obr.Msg, 0, nil)
-			}
-			if err != nil {
-				s.Debug(bgctx, "failed to send msg: uid: %s convID: %s obid: %s err: %s attempts: %d",
-					s.outbox.GetUID(), obr.ConvID, obr.OutboxID, err.Error(), obr.State.Sending())
-
-				// Process failure. If we determine that the message is unrecoverable, then bail out.
-				if errTyp, ok := s.doNotRetryFailure(bgctx, obr, err); ok {
-					// Record failure if we hit this case, and put the rest of this loop in a
-					// mode where all other entries also fail.
-					s.Debug(bgctx, "failure condition reached, marking as error and notifying: obid: %s errTyp: %v attempts: %d", obr.OutboxID, errTyp, obr.State.Sending())
-
-					if err := s.failMessage(bgctx, obr, chat1.OutboxStateError{
-						Message: err.Error(),
-						Typ:     errTyp,
-					}); err != nil {
-						s.Debug(bgctx, "unable to fail message: err: %s", err.Error())
-					}
-
-				} else {
-					if err = s.outbox.RecordFailedAttempt(bgctx, obr); err != nil {
-						s.Debug(bgctx, "unable to record failed attempt on outbox: uid %s err: %s",
-							s.outbox.GetUID(), err.Error())
-					}
+				if err = s.outbox.RecordFailedAttempt(bgctx, obr); err != nil {
+					s.Debug(bgctx, "unable to record failed attempt on outbox: uid %s err: %s",
+						s.outbox.GetUID(), err.Error())
 				}
 			}
 		}
