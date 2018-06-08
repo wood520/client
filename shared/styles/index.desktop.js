@@ -110,7 +110,8 @@ export const backgroundURL = (...to: Array<string>) => {
 }
 
 export const hairlineWidth = 1
-export const styleSheetCreate = (obj: Object) => obj
+// $FlowIssue
+export const styleSheetCreate = <T>(obj: T): {[k: $Keys<T>]: CollapsibleStyle} => obj
 export const collapseStyles = (styles: $ReadOnlyArray<CollapsibleStyle>): Object => {
   const flattenedStyles = styles.reduce((a, e) => a.concat(e), [])
   return flattenedStyles.reduce((o, e) => (e ? {...o, ...e} : o), {})
