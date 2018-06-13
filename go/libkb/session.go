@@ -138,23 +138,23 @@ func (s *Session) IsRecent() bool {
 	return time.Since(s.mtime) < time.Hour
 }
 
-func (s *Session) check() error {
-	s.G().Log.Debug("+ Checking session")
+func (s *Session) check(m MetaContext) error {
+	m.CDebugf("+ Checking session")
 	if s.IsRecent() && s.checked {
-		s.G().Log.Debug("- session is recent, short-circuiting")
+		m.CDebugf("- session is recent, short-circuiting")
 		s.valid = true
 		return nil
 	}
-	return s.checkWithServer()
+	return s.checkWithServer(m)
 }
 
-func (s *Session) checkWithServer() error {
+func (s *Session) checkWithServer(m MetaContext) error {
 	arg := NewRetryAPIArg("sesscheck")
 	arg.SessionR = s
 	arg.SessionType = APISessionTypeOPTIONAL
 	arg.AppStatusCodes = []int{SCOk, SCBadSession}
 
-	res, err := s.G().API.Get(arg)
+	res, err := m.G().API.Get(m, arg)
 
 	if err != nil {
 		return err
@@ -163,7 +163,7 @@ func (s *Session) checkWithServer() error {
 	s.checked = true
 
 	if res.AppStatus.Code == SCOk {
-		s.G().Log.Debug("| Stored session checked out")
+		m.CDebugf("| Stored session checked out")
 		var err error
 		var uid keybase1.UID
 		var username, csrf string
@@ -181,11 +181,11 @@ func (s *Session) checkWithServer() error {
 		s.csrf = csrf
 		s.mtime = time.Now()
 	} else {
-		s.G().Log.Notice("Stored session expired")
+		m.CInfof("Stored session expired")
 		s.Invalidate()
 	}
 
-	s.G().Log.Debug("- Checked session")
+	m.CDebugf("- Checked session")
 	return nil
 }
 
@@ -218,60 +218,4 @@ func (s *Session) HasSessionToken() bool {
 
 func (s *Session) IsValid() bool {
 	return s.valid
-}
-
-func (s *Session) postLogout() error {
-
-	_, err := s.G().API.Post(APIArg{
-		SessionR:    s,
-		Endpoint:    "logout",
-		SessionType: APISessionTypeREQUIRED,
-	})
-
-	// Invalidate even if we hit an error.
-	s.Invalidate()
-
-	return err
-}
-
-func (s *Session) Logout() error {
-	var err, e2 error
-	if s.HasSessionToken() {
-		e2 = s.postLogout()
-	}
-	if err == nil && e2 != nil {
-		err = e2
-	}
-	return err
-}
-
-func (s *Session) loadAndCheck() (bool, error) {
-	var err error
-	if s.HasSessionToken() {
-		err = s.check()
-	}
-	return s.IsValid(), err
-}
-
-func (s *Session) loadAndCheckProvisioned() (bool, error) {
-	ok, err := s.loadAndCheck()
-	if err != nil {
-		return false, err
-	}
-	if !ok {
-		return false, nil
-	}
-	return s.IsLoggedInAndProvisioned(), nil
-}
-
-func (s *Session) LoadAndCheckIfStale() (bool, error) {
-	return s.loadAndCheck()
-}
-
-func (s *Session) LoadAndForceCheck() (bool, error) {
-	var err error
-	if s.HasSessionToken() {
-		err = s.checkWithServer()
-	}
-	return s.IsValid(), err
 }

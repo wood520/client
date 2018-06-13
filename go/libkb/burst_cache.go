@@ -3,7 +3,6 @@ package libkb
 import (
 	"fmt"
 	lru "github.com/hashicorp/golang-lru"
-	"golang.org/x/net/context"
 	"time"
 )
 
@@ -56,40 +55,40 @@ type BurstCacheLoader func() (obj interface{}, err error)
 
 // Load item key from the burst cache. On a cache miss, load with the given loader function.
 // Return the object as an interface{}, so the caller needs to cast out of this burst cache.
-func (b *BurstCache) Load(ctx context.Context, key BurstCacheKey, loader BurstCacheLoader) (ret interface{}, err error) {
-	ctx = WithLogTag(ctx, "BC")
+func (b *BurstCache) Load(m MetaContext, key BurstCacheKey, loader BurstCacheLoader) (ret interface{}, err error) {
+	m = m.WithLogTag("BC")
 
-	defer b.G().CVTrace(ctx, VLog0, fmt.Sprintf("BurstCache(%s)#Load(%s)", b.cacheName, key.String()), func() error { return err })()
+	defer m.CVTrace(VLog0, fmt.Sprintf("BurstCache(%s)#Load(%s)", b.cacheName, key.String()), func() error { return err })()
 
-	lock := b.locktab.AcquireOnName(ctx, b.G(), key.String())
-	defer lock.Release(ctx)
+	lock := b.locktab.AcquireOnName(m, key.String())
+	defer lock.Release(m)
 
-	b.G().VDL.CLogf(ctx, VLog0, "| past single-flight lock")
+	m.VLogf(VLog0, "| past single-flight lock")
 
 	found := false
 	if val, ok := b.lru.Get(key.String()); ok {
-		b.G().VDL.CLogf(ctx, VLog0, "| found in LRU cache")
+		m.VLogf(VLog0, "| found in LRU cache")
 		if tmp, ok := val.(*burstCacheObj); ok {
 			age := b.G().GetClock().Now().Sub(tmp.cachedAt)
 			if age < b.cacheLife {
-				b.G().VDL.CLogf(ctx, VLog0, "| cached object was fresh (loaded %v ago)", age)
+				m.VLogf(VLog0, "| cached object was fresh (loaded %v ago)", age)
 				ret = tmp.obj
 				found = true
 			} else {
-				b.G().VDL.CLogf(ctx, VLog0, "| cached object expired %v ago", (age - b.cacheLife))
+				m.VLogf(VLog0, "| cached object expired %v ago", (age - b.cacheLife))
 				b.lru.Remove(key.String())
 			}
 		} else {
-			b.G().Log.CErrorf(ctx, "| object in LRU was of wrong type")
+			m.CErrorf("| object in LRU was of wrong type")
 		}
 	} else {
-		b.G().VDL.CLogf(ctx, VLog0, "| object cache miss")
+		m.VLogf(VLog0, "| object cache miss")
 	}
 
 	if !found {
 		ret, err = loader()
 		if err == nil {
-			b.G().VDL.CLogf(ctx, VLog0, "| caching object after successful fetch")
+			m.VLogf(VLog0, "| caching object after successful fetch")
 			b.lru.Add(key.String(), &burstCacheObj{ret, b.G().GetClock().Now()})
 		}
 	}

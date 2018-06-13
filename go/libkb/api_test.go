@@ -58,12 +58,14 @@ func TestProductionCA(t *testing.T) {
 		t.Fatalf("api url: %s, expected %s", url.String(), pingExpected)
 	}
 
-	_, err := tc.G.API.Post(arg)
+	m := NewMetaContextForTest(tc)
+
+	_, err := tc.G.API.Post(m, arg)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = tc.G.API.Get(arg)
+	_, err = tc.G.API.Get(m, arg)
 	if err != nil {
 		t.Fatal(err)
 	}

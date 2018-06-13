@@ -227,7 +227,7 @@ func (sc *SigChain) LoadFromServer(m MetaContext, t *MerkleTriple, selfUID keyba
 	m.CDebugf("+ Load SigChain from server (uid=%s, low=%d)", sc.uid, low)
 	defer func() { m.CDebugf("- Loaded SigChain -> %s", ErrToOk(err)) }()
 
-	resp, finisher, err := sc.G().API.GetResp(APIArg{
+	resp, finisher, err := m.G().API.GetResp(m, APIArg{
 		Endpoint:    "sig/get",
 		SessionType: APISessionTypeOPTIONAL,
 		Args: HTTPArgs{
@@ -236,7 +236,6 @@ func (sc *SigChain) LoadFromServer(m MetaContext, t *MerkleTriple, selfUID keyba
 			"v2_compressed": B{true},   // TODO: Change the server to honor this flag
 			"self":          B{isSelf}, // TODO: Change the server to honor this flag
 		},
-		MetaContext: m,
 	})
 	if err != nil {
 		return

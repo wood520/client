@@ -64,9 +64,9 @@ func LoadPGPKeyFromLocalDB(k keybase1.KID, g *GlobalContext) (*PGPKeyBundle, err
 // associated with that KID, for signature verification. If the key isn't
 // found in memory or on disk (in the case of PGP), then it will attempt
 // to fetch the key from the keybase server.
-func (sk *SpecialKeyRing) Load(kid keybase1.KID) (GenericKey, error) {
+func (sk *SpecialKeyRing) Load(m MetaContext, kid keybase1.KID) (GenericKey, error) {
 
-	sk.G().Log.Debug("+ SpecialKeyRing.Load(%s)", kid)
+	m.CDebugf("+ SpecialKeyRing.Load(%s)", kid)
 
 	if !sk.IsValidKID(kid) {
 		err := UnknownSpecialKIDError{kid}
@@ -74,7 +74,7 @@ func (sk *SpecialKeyRing) Load(kid keybase1.KID) (GenericKey, error) {
 	}
 
 	if key, found := sk.keys[kid]; found {
-		sk.G().Log.Debug("- SpecialKeyRing.Load(%s) -> hit inmem cache", kid)
+		m.CDebugf("- SpecialKeyRing.Load(%s) -> hit inmem cache", kid)
 		return key, nil
 	}
 
@@ -82,9 +82,9 @@ func (sk *SpecialKeyRing) Load(kid keybase1.KID) (GenericKey, error) {
 
 	if err != nil || key == nil {
 
-		sk.G().Log.Debug("| Load(%s) going to network", kid)
+		m.CDebugf("| Load(%s) going to network", kid)
 		var res *APIRes
-		res, err = sk.G().API.Get(APIArg{
+		res, err = m.G().API.Get(m, APIArg{
 			Endpoint:    "key/special",
 			SessionType: APISessionTypeNONE,
 			Args: HTTPArgs{
@@ -98,19 +98,19 @@ func (sk *SpecialKeyRing) Load(kid keybase1.KID) (GenericKey, error) {
 		if err == nil {
 			w.Warn(sk.G())
 
-			if e2 := key.StoreToLocalDb(sk.G()); e2 != nil {
-				sk.G().Log.Warning("Failed to store key: %s", e2)
+			if e2 := key.StoreToLocalDb(m.G()); e2 != nil {
+				m.CWarningf("Failed to store key: %s", e2)
 			}
 		}
 	} else {
-		sk.G().Log.Debug("| Load(%s) hit DB-backed cache", kid)
+		m.CDebugf("| Load(%s) hit DB-backed cache", kid)
 	}
 
 	if err == nil && key != nil {
 		sk.keys[kid] = key
 	}
 
-	sk.G().Log.Debug("- SpecialKeyRing.Load(%s)", kid)
+	m.CDebugf("- SpecialKeyRing.Load(%s)", kid)
 
 	return key, err
 }

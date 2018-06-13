@@ -39,7 +39,6 @@ type Logs struct {
 
 // LogSendContext for LogSend
 type LogSendContext struct {
-	Contextified
 	Logs Logs
 }
 
@@ -72,8 +71,8 @@ func addGzippedFile(mpart *multipart.Writer, param, filename, data string) error
 	return gz.Close()
 }
 
-func (l *LogSendContext) post(status, feedback, kbfsLog, svcLog, desktopLog, updaterLog, startLog, installLog, systemLog, gitLog, watchdogLog string, traceBundle []byte, uid keybase1.UID, installID InstallID) (string, error) {
-	l.G().Log.Debug("sending status + logs to keybase")
+func (l *LogSendContext) post(m MetaContext, status, feedback, kbfsLog, svcLog, desktopLog, updaterLog, startLog, installLog, systemLog, gitLog, watchdogLog string, traceBundle []byte, uid keybase1.UID, installID InstallID) (string, error) {
+	m.CDebugf("sending status + logs to keybase")
 
 	var body bytes.Buffer
 	mpart := multipart.NewWriter(&body)
@@ -122,7 +121,7 @@ func (l *LogSendContext) post(status, feedback, kbfsLog, svcLog, desktopLog, upd
 	}
 
 	if len(traceBundle) > 0 {
-		l.G().Log.Debug("trace bundle size: %d", len(traceBundle))
+		m.CDebugf("trace bundle size: %d", len(traceBundle))
 		if err := addFile(mpart, "trace_tar_gz", "trace.tar.gz", traceBundle); err != nil {
 			return "", err
 		}
@@ -132,16 +131,16 @@ func (l *LogSendContext) post(status, feedback, kbfsLog, svcLog, desktopLog, upd
 		return "", err
 	}
 
-	l.G().Log.Debug("body size: %d", body.Len())
+	m.CDebugf("body size: %d", body.Len())
 
 	arg := APIArg{
 		Endpoint:    "logdump/send",
 		SessionType: APISessionTypeOPTIONAL,
 	}
 
-	resp, err := l.G().API.PostRaw(arg, mpart.FormDataContentType(), &body)
+	resp, err := m.G().API.PostRaw(m, arg, mpart.FormDataContentType(), &body)
 	if err != nil {
-		l.G().Log.Debug("post error: %s", err)
+		m.CDebugf("post error: %s", err)
 		return "", err
 	}
 
@@ -452,7 +451,7 @@ func getTraceBundle(log logger.Logger, traceDir string) []byte {
 
 // LogSend sends the tails of log files to kb, and also the last
 // few trace output files.
-func (l *LogSendContext) LogSend(statusJSON, feedback string, sendLogs bool, numBytes int, uid keybase1.UID, installID InstallID) (string, error) {
+func (l *LogSendContext) LogSend(m MetaContext, statusJSON, feedback string, sendLogs bool, numBytes int, uid keybase1.UID, installID InstallID) (string, error) {
 	logs := l.Logs
 	var kbfsLog string
 	var svcLog string
@@ -466,25 +465,25 @@ func (l *LogSendContext) LogSend(statusJSON, feedback string, sendLogs bool, num
 	var watchdogLog string
 
 	if sendLogs {
-		svcLog = tail(l.G().Log, "service", logs.Service, numBytes)
-		kbfsLog = tail(l.G().Log, "kbfs", logs.Kbfs, numBytes)
-		desktopLog = tail(l.G().Log, "desktop", logs.Desktop, numBytes)
-		updaterLog = tail(l.G().Log, "updater", logs.Updater, numBytes)
+		svcLog = tail(m.G().Log, "service", logs.Service, numBytes)
+		kbfsLog = tail(m.G().Log, "kbfs", logs.Kbfs, numBytes)
+		desktopLog = tail(m.G().Log, "desktop", logs.Desktop, numBytes)
+		updaterLog = tail(m.G().Log, "updater", logs.Updater, numBytes)
 		// We don't use the systemd journal to store regular logs, since on
 		// some systems (e.g. Ubuntu 16.04) it's not persisted across boots.
 		// However we do use it for startup logs, since that's the only place
 		// to get them in systemd mode.
-		if l.G().Env.WantsSystemd() {
-			startLog = tailSystemdJournal(l.G().Log, []string{"keybase.service", "kbfs.service", "keybase.gui.service"}, numBytes)
+		if m.G().Env.WantsSystemd() {
+			startLog = tailSystemdJournal(m.G().Log, []string{"keybase.service", "kbfs.service", "keybase.gui.service"}, numBytes)
 		} else {
-			startLog = tail(l.G().Log, "start", logs.Start, numBytes)
+			startLog = tail(m.G().Log, "start", logs.Start, numBytes)
 		}
-		installLog = tail(l.G().Log, "install", logs.Install, numBytes)
-		systemLog = tail(l.G().Log, "system", logs.System, numBytes)
-		gitLog = tail(l.G().Log, "git", logs.Git, numBytes)
-		watchdogLog = tail(l.G().Log, "watchdog", logs.Watchdog, numBytes)
+		installLog = tail(m.G().Log, "install", logs.Install, numBytes)
+		systemLog = tail(m.G().Log, "system", logs.System, numBytes)
+		gitLog = tail(m.G().Log, "git", logs.Git, numBytes)
+		watchdogLog = tail(m.G().Log, "watchdog", logs.Watchdog, numBytes)
 		if logs.Trace != "" {
-			traceBundle = getTraceBundle(l.G().Log, logs.Trace)
+			traceBundle = getTraceBundle(m.G().Log, logs.Trace)
 		}
 	} else {
 		kbfsLog = ""
@@ -498,5 +497,5 @@ func (l *LogSendContext) LogSend(statusJSON, feedback string, sendLogs bool, num
 		watchdogLog = ""
 	}
 
-	return l.post(statusJSON, feedback, kbfsLog, svcLog, desktopLog, updaterLog, startLog, installLog, systemLog, gitLog, watchdogLog, traceBundle, uid, installID)
+	return l.post(m, statusJSON, feedback, kbfsLog, svcLog, desktopLog, updaterLog, startLog, installLog, systemLog, gitLog, watchdogLog, traceBundle, uid, installID)
 }

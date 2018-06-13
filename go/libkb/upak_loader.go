@@ -236,8 +236,9 @@ func (u *CachedUPAKLoader) putUPAKToCache(ctx context.Context, obj *keybase1.Use
 
 func (u *CachedUPAKLoader) PutUserToCache(ctx context.Context, user *User) error {
 
-	lock := u.locktab.AcquireOnName(ctx, u.G(), user.GetUID().String())
-	defer lock.Release(ctx)
+	m := NewMetaContext(ctx, u.G())
+	lock := u.locktab.AcquireOnName(m, user.GetUID().String())
+	defer lock.Release(m)
 	upak, err := user.ExportToUPKV2AllIncarnations()
 	if err != nil {
 		return err
@@ -277,10 +278,10 @@ func (u *CachedUPAKLoader) loadWithInfo(arg LoadUserArg, info *CachedUserLoadInf
 		}
 	}
 
-	lock := u.locktab.AcquireOnName(ctx, g, arg.uid.String())
+	lock := u.locktab.AcquireOnName(m, arg.uid.String())
 
 	defer func() {
-		lock.Release(ctx)
+		lock.Release(m)
 
 		if !shouldReturnFullUser {
 			user = nil
@@ -550,8 +551,10 @@ func (u *CachedUPAKLoader) Invalidate(ctx context.Context, uid keybase1.UID) {
 		return
 	}
 
-	lock := u.locktab.AcquireOnName(ctx, u.G(), uid.String())
-	defer lock.Release(ctx)
+	m := NewMetaContext(ctx, u.G())
+
+	lock := u.locktab.AcquireOnName(m, uid.String())
+	defer lock.Release(m)
 
 	u.removeMemCache(ctx, uid)
 
@@ -628,7 +631,8 @@ func (u *CachedUPAKLoader) LookupUsernameUPAK(ctx context.Context, uid keybase1.
 // LookupUID is a verified map of username -> UID. IT calls into the resolver, which gives un untrusted
 // UID, but verifies with the UPAK loader that the mapping UID -> username is correct.
 func (u *CachedUPAKLoader) LookupUID(ctx context.Context, un NormalizedUsername) (keybase1.UID, error) {
-	rres := u.G().Resolver.Resolve(un.String())
+	m := NewMetaContext(ctx, u.G())
+	rres := u.G().Resolver.Resolve(m, un.String())
 	if err := rres.GetError(); err != nil {
 		return keybase1.UID(""), err
 	}

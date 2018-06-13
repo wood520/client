@@ -75,11 +75,10 @@ func (t *Tracker2Syncer) syncFromServer(m MetaContext, uid keybase1.UID, sr Sess
 		hargs.Add("version", I{lv})
 	}
 	var res *APIRes
-	res, err = t.G().API.Get(APIArg{
-		Endpoint:    "user/list_followers_for_display",
-		Args:        hargs,
-		SessionR:    sr,
-		MetaContext: m,
+	res, err = m.G().API.Get(m, APIArg{
+		Endpoint: "user/list_followers_for_display",
+		Args:     hargs,
+		SessionR: sr,
 	})
 	m.CDebugf("| syncFromServer() -> %s", ErrToOk(err))
 	if err != nil {

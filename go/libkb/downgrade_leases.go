@@ -4,10 +4,8 @@
 package libkb
 
 import (
-	"strings"
-
 	keybase1 "github.com/keybase/client/go/protocol/keybase1"
-	context "golang.org/x/net/context"
+	"strings"
 )
 
 func kidsToString(kids []keybase1.KID) string {
@@ -49,12 +47,11 @@ func (r *leaseReply) GetAppStatus() *AppStatus {
 	return &r.Status
 }
 
-func RequestDowngradeLeaseByKID(ctx context.Context, g *GlobalContext, kids []keybase1.KID) (lease *Lease, mr *MerkleRoot, err error) {
+func RequestDowngradeLeaseByKID(m MetaContext, kids []keybase1.KID) (lease *Lease, mr *MerkleRoot, err error) {
 	var res leaseReply
-	err = g.API.PostDecode(APIArg{
+	err = m.G().API.PostDecode(m, APIArg{
 		Endpoint:    "downgrade/key",
 		SessionType: APISessionTypeREQUIRED,
-		NetContext:  ctx,
 		Args: HTTPArgs{
 			"kids": S{kidsToString(kids)},
 		},
@@ -62,14 +59,13 @@ func RequestDowngradeLeaseByKID(ctx context.Context, g *GlobalContext, kids []ke
 	if err != nil {
 		return nil, nil, err
 	}
-	return leaseWithMerkleRoot(ctx, g, res)
+	return leaseWithMerkleRoot(m, res)
 }
 
-func CancelDowngradeLease(ctx context.Context, g *GlobalContext, l keybase1.LeaseID) error {
-	_, err := g.API.Post(APIArg{
+func CancelDowngradeLease(m MetaContext, l keybase1.LeaseID) error {
+	_, err := m.G().API.Post(m, APIArg{
 		Endpoint:    "downgrade/cancel",
 		SessionType: APISessionTypeREQUIRED,
-		NetContext:  ctx,
 		Args: HTTPArgs{
 			"downgrade_lease_id": S{string(l)},
 		},
@@ -77,12 +73,11 @@ func CancelDowngradeLease(ctx context.Context, g *GlobalContext, l keybase1.Leas
 	return err
 }
 
-func RequestDowngradeLeaseBySigIDs(ctx context.Context, g *GlobalContext, sigIDs []keybase1.SigID) (lease *Lease, mr *MerkleRoot, err error) {
+func RequestDowngradeLeaseBySigIDs(m MetaContext, sigIDs []keybase1.SigID) (lease *Lease, mr *MerkleRoot, err error) {
 	var res leaseReply
-	err = g.API.PostDecode(APIArg{
+	err = m.G().API.PostDecode(m, APIArg{
 		Endpoint:    "downgrade/sig",
 		SessionType: APISessionTypeREQUIRED,
-		NetContext:  ctx,
 		Args: HTTPArgs{
 			"sig_ids": S{sigIDsToString(sigIDs)},
 		},
@@ -90,15 +85,14 @@ func RequestDowngradeLeaseBySigIDs(ctx context.Context, g *GlobalContext, sigIDs
 	if err != nil {
 		return nil, nil, err
 	}
-	return leaseWithMerkleRoot(ctx, g, res)
+	return leaseWithMerkleRoot(m, res)
 }
 
-func RequestDowngradeLeaseByTeam(ctx context.Context, g *GlobalContext, teamID keybase1.TeamID, uids []keybase1.UID) (lease *Lease, mr *MerkleRoot, err error) {
+func RequestDowngradeLeaseByTeam(m MetaContext, teamID keybase1.TeamID, uids []keybase1.UID) (lease *Lease, mr *MerkleRoot, err error) {
 	var res leaseReply
-	err = g.API.PostDecode(APIArg{
+	err = m.G().API.PostDecode(m, APIArg{
 		Endpoint:    "downgrade/team",
 		SessionType: APISessionTypeREQUIRED,
-		NetContext:  ctx,
 		Args: HTTPArgs{
 			"team_id":     S{string(teamID)},
 			"member_uids": S{UidsToString(uids)},
@@ -107,11 +101,11 @@ func RequestDowngradeLeaseByTeam(ctx context.Context, g *GlobalContext, teamID k
 	if err != nil {
 		return nil, nil, err
 	}
-	return leaseWithMerkleRoot(ctx, g, res)
+	return leaseWithMerkleRoot(m, res)
 }
 
-func leaseWithMerkleRoot(ctx context.Context, g *GlobalContext, res leaseReply) (lease *Lease, mr *MerkleRoot, err error) {
-	mr, err = g.MerkleClient.FetchRootFromServerBySeqno(ctx, res.Lease.MerkleSeqno)
+func leaseWithMerkleRoot(m MetaContext, res leaseReply) (lease *Lease, mr *MerkleRoot, err error) {
+	mr, err = m.G().MerkleClient.FetchRootFromServerBySeqno(m, res.Lease.MerkleSeqno)
 	if err != nil {
 		return nil, nil, err
 	}

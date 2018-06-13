@@ -260,22 +260,22 @@ type ExternalAPIRes struct {
 }
 
 type API interface {
-	Get(APIArg) (*APIRes, error)
-	GetDecode(APIArg, APIResponseWrapper) error
-	GetResp(APIArg) (*http.Response, func(), error)
-	Post(APIArg) (*APIRes, error)
-	PostJSON(APIArg) (*APIRes, error)
-	PostDecode(APIArg, APIResponseWrapper) error
-	PostRaw(APIArg, string, io.Reader) (*APIRes, error)
-	Delete(APIArg) (*APIRes, error)
+	Get(MetaContext, APIArg) (*APIRes, error)
+	GetDecode(MetaContext, APIArg, APIResponseWrapper) error
+	GetResp(MetaContext, APIArg) (*http.Response, func(), error)
+	Post(MetaContext, APIArg) (*APIRes, error)
+	PostJSON(MetaContext, APIArg) (*APIRes, error)
+	PostDecode(MetaContext, APIArg, APIResponseWrapper) error
+	PostRaw(MetaContext, APIArg, string, io.Reader) (*APIRes, error)
+	Delete(MetaContext, APIArg) (*APIRes, error)
 }
 
 type ExternalAPI interface {
-	Get(APIArg) (*ExternalAPIRes, error)
-	Post(APIArg) (*ExternalAPIRes, error)
-	GetHTML(APIArg) (*ExternalHTMLRes, error)
-	GetText(APIArg) (*ExternalTextRes, error)
-	PostHTML(APIArg) (*ExternalHTMLRes, error)
+	Get(MetaContext, APIArg) (*ExternalAPIRes, error)
+	Post(MetaContext, APIArg) (*ExternalAPIRes, error)
+	GetHTML(MetaContext, APIArg) (*ExternalHTMLRes, error)
+	GetText(MetaContext, APIArg) (*ExternalTextRes, error)
+	PostHTML(MetaContext, APIArg) (*ExternalHTMLRes, error)
 }
 
 type IdentifyUI interface {

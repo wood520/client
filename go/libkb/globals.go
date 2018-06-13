@@ -928,15 +928,14 @@ func (g *GlobalContext) LogoutSelfCheck() error {
 	}
 
 	arg := APIArg{
-		NetContext: context.Background(),
-		Endpoint:   "selfcheck",
+		Endpoint: "selfcheck",
 		Args: HTTPArgs{
 			"uid":       S{Val: uid.String()},
 			"device_id": S{Val: deviceID.String()},
 		},
 		SessionType: APISessionTypeREQUIRED,
 	}
-	res, err := g.API.Post(arg)
+	res, err := g.API.Post(g.NewMetaContextBackground(), arg)
 	if err != nil {
 		return err
 	}
@@ -1001,7 +1000,7 @@ func (g *GlobalContext) SetTeamEKBoxStorage(s TeamEKBoxStorage) {
 }
 
 func (g *GlobalContext) LoadUserByUID(uid keybase1.UID) (*User, error) {
-	arg := NewLoadUserArgWithMetaContext(NewMetaContextBackground(g)).WithUID(uid).WithPublicKeyOptional()
+	arg := NewLoadUserArgWithMetaContext(g.NewMetaContextBackground()).WithUID(uid).WithPublicKeyOptional()
 	return LoadUser(arg)
 }
 
@@ -1201,4 +1200,8 @@ func (g *GlobalContext) GetMeUV(ctx context.Context) (res keybase1.UserVersion, 
 		return res, fmt.Errorf("could not load logged-in user")
 	}
 	return upkv2.Current.ToUserVersion(), nil
+}
+
+func (g *GlobalContext) NewMetaContextBackground() MetaContext {
+	return NewMetaContextBackground(g)
 }

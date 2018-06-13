@@ -11,8 +11,6 @@ import (
 	"fmt"
 
 	"github.com/keybase/go-codec/codec"
-
-	context "golang.org/x/net/context"
 )
 
 // TLFPseudonym is an identifier for a key in a tlf
@@ -116,7 +114,7 @@ func MakePseudonym(info TlfPseudonymInfo) (TlfPseudonym, error) {
 	return hmac, nil
 }
 
-func PostTlfPseudonyms(ctx context.Context, g *GlobalContext, pnymInfos []TlfPseudonymInfo) ([]TlfPseudonym, error) {
+func PostTlfPseudonyms(m MetaContext, pnymInfos []TlfPseudonymInfo) ([]TlfPseudonym, error) {
 	var pnymReqs []tlfPseudonymReq
 	var pnyms []TlfPseudonym
 	for _, info := range pnymInfos {
@@ -138,7 +136,7 @@ func PostTlfPseudonyms(ctx context.Context, g *GlobalContext, pnymInfos []TlfPse
 	payload := make(JSONPayload)
 	payload["tlf_pseudonyms"] = pnymReqs
 
-	_, err := g.API.PostJSON(APIArg{
+	_, err := m.G().API.PostJSON(m, APIArg{
 		Endpoint:    "kbfs/pseudonym/put",
 		JSONPayload: payload,
 		SessionType: APISessionTypeREQUIRED,
@@ -153,7 +151,7 @@ func PostTlfPseudonyms(ctx context.Context, g *GlobalContext, pnymInfos []TlfPse
 // The output structs are returned in the order corresponding to the inputs.
 // The top-level error is filled if the entire request fails.
 // The each-struct errors may be filled for per-pseudonym errors.
-func GetTlfPseudonyms(ctx context.Context, g *GlobalContext, pnyms []TlfPseudonym) ([]GetTlfPseudonymEither, error) {
+func GetTlfPseudonyms(m MetaContext, pnyms []TlfPseudonym) ([]GetTlfPseudonymEither, error) {
 	var pnymStrings []string
 	for _, x := range pnyms {
 		pnymStrings = append(pnymStrings, x.String())
@@ -163,12 +161,11 @@ func GetTlfPseudonyms(ctx context.Context, g *GlobalContext, pnyms []TlfPseudony
 	payload["tlf_pseudonyms"] = pnymStrings
 
 	var res getTlfPseudonymsRes
-	err := g.API.PostDecode(
+	err := m.G().API.PostDecode(m,
 		APIArg{
 			Endpoint:    "kbfs/pseudonym/get",
 			SessionType: APISessionTypeREQUIRED,
 			JSONPayload: payload,
-			NetContext:  ctx,
 		},
 		&res)
 	if err != nil {
@@ -182,13 +179,13 @@ func GetTlfPseudonyms(ctx context.Context, g *GlobalContext, pnyms []TlfPseudony
 	}
 	var resList []GetTlfPseudonymEither
 	for i, received := range res.TlfPseudonyms {
-		resList = append(resList, checkAndConvertTlfPseudonymFromServer(ctx, g, pnyms[i], received))
+		resList = append(resList, checkAndConvertTlfPseudonymFromServer(m, pnyms[i], received))
 	}
 
 	return resList, nil
 }
 
-func checkAndConvertTlfPseudonymFromServer(ctx context.Context, g *GlobalContext, req TlfPseudonym, received getTlfPseudonymRes) GetTlfPseudonymEither {
+func checkAndConvertTlfPseudonymFromServer(m MetaContext, req TlfPseudonym, received getTlfPseudonymRes) GetTlfPseudonymEither {
 	mkErr := func(err error) GetTlfPseudonymEither {
 		return GetTlfPseudonymEither{
 			Info: nil,
@@ -234,14 +231,14 @@ func checkAndConvertTlfPseudonymFromServer(ctx context.Context, g *GlobalContext
 		x.Info = &info
 	}
 
-	err := checkTlfPseudonymFromServer(ctx, g, req, x)
+	err := checkTlfPseudonymFromServer(m, req, x)
 	if err != nil {
 		return mkErr(err)
 	}
 	return x
 }
 
-func checkTlfPseudonymFromServer(ctx context.Context, g *GlobalContext, req TlfPseudonym, received GetTlfPseudonymEither) error {
+func checkTlfPseudonymFromServer(m MetaContext, req TlfPseudonym, received GetTlfPseudonymEither) error {
 	// Exactly one of Info and Err should exist
 	if (received.Info == nil) == (received.Err == nil) {
 		return &PseudonymGetError{fmt.Sprintf("invalid server response for pseudonym get: %s", req)}

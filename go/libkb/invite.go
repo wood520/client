@@ -35,30 +35,30 @@ func (i InviteArg) ToHTTPArgs() HTTPArgs {
 	}
 }
 
-func SendInvitation(g *GlobalContext, email string, arg InviteArg) (*Invitation, error) {
+func SendInvitation(m MetaContext, email string, arg InviteArg) (*Invitation, error) {
 	hargs := arg.ToHTTPArgs()
 	hargs["email"] = S{Val: email}
-	return callSendInvitation(g, hargs)
+	return callSendInvitation(m, hargs)
 }
 
-func GenerateInvitationCode(g *GlobalContext, arg InviteArg) (*Invitation, error) {
-	return callSendInvitation(g, arg.ToHTTPArgs())
+func GenerateInvitationCode(m MetaContext, arg InviteArg) (*Invitation, error) {
+	return callSendInvitation(m, arg.ToHTTPArgs())
 }
 
-func GenerateInvitationCodeForAssertion(g *GlobalContext, assertion keybase1.SocialAssertion, arg InviteArg) (*Invitation, error) {
+func GenerateInvitationCodeForAssertion(m MetaContext, assertion keybase1.SocialAssertion, arg InviteArg) (*Invitation, error) {
 	hargs := arg.ToHTTPArgs()
 	hargs["assertion"] = S{Val: assertion.String()}
-	return callSendInvitation(g, hargs)
+	return callSendInvitation(m, hargs)
 }
 
-func callSendInvitation(g *GlobalContext, params HTTPArgs) (*Invitation, error) {
+func callSendInvitation(m MetaContext, params HTTPArgs) (*Invitation, error) {
 	arg := APIArg{
 		Endpoint:       "send_invitation",
 		SessionType:    APISessionTypeREQUIRED,
 		Args:           params,
 		AppStatusCodes: []int{SCOk, SCThrottleControl},
 	}
-	res, err := g.API.Post(arg)
+	res, err := m.G().API.Post(m, arg)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func callSendInvitation(g *GlobalContext, params HTTPArgs) (*Invitation, error) 
 	var inv Invitation
 
 	if res.AppStatus.Code == SCThrottleControl {
-		g.Log.Debug("send_invitation returned SCThrottleControl: user is out of invites")
+		m.CDebugf("send_invitation returned SCThrottleControl: user is out of invites")
 		inv.Throttled = true
 		return &inv, nil
 	}
