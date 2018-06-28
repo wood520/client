@@ -11,8 +11,9 @@ import {
   Meta,
   ScrollView,
   Text,
+  Users,
 } from '../../common-adapters'
-import {globalStyles, globalColors, globalMargins, platformStyles} from '../../styles'
+import {globalStyles, globalColors, globalMargins} from '../../styles'
 import {isMobile} from '../../constants/platform'
 
 const connectedUsernamesProps = {
@@ -85,14 +86,13 @@ export const MultiFollowNotification = (props: Props) => {
       when={props.notificationTime}
     >
       <Text type="Body" style={{marginTop: 2, marginBottom: globalMargins.xtiny}}>
-        <ConnectedUsernames
-          containerStyle={platformStyles({isElectron: {whiteSpace: 'wrap'}})}
-          inlineGrammar={true}
-          showAnd={!props.numAdditional}
-          {...connectedUsernamesProps}
-          usernames={usernames}
-          onUsernameClicked={props.onClickUser}
-        />
+        <Users usernames={usernames}>
+          {({index, username, following, color, text, last}) => [
+            text,
+            (!last && index !== usernames.length - 2 && ', ') || null,
+            (index === usernames.length - 2 && ' and ') || null,
+          ]}
+        </Users>
         {!!props.numAdditional && props.numAdditional > 0 && ` and ${props.numAdditional} others `} started
         following you.
       </Text>
