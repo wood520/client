@@ -7,7 +7,6 @@ import {globalStyles, globalColors, globalMargins} from '../../styles'
 import {isMobile} from '../../constants/platform'
 
 export type NewFollow = Types.FollowedNotification
-
 export type Props = Types._FollowedNotificationItem & {onClickUser: (username: string) => void}
 
 export default (props: any) => {
