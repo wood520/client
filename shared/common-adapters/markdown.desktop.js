@@ -83,10 +83,17 @@ const quoteStyle = {
   paddingLeft: globalMargins.small,
 }
 
+const textStyle = platformStyles({
+  isElectron: {
+    color: 'inherit',
+    fontWeight: 'inherit',
+  },
+})
+
 function previewCreateComponent(type, key, children, options) {
   switch (type) {
     case 'emoji':
-      return <EmojiIfExists emojiName={String(children)} size={12} key={key} />
+      return <EmojiIfExists emojiName={String(children)} size={12} style={textStyle} key={key} />
     case 'native-emoji':
       return <Emoji emojiName={String(children)} size={12} key={key} />
     default:
@@ -170,7 +177,14 @@ function messageCreateComponent(type, key, children, options) {
         </Text>
       )
     case 'emoji':
-      return <EmojiIfExists emojiName={String(children)} size={options.bigEmoji ? 32 : 16} key={key} />
+      return (
+        <EmojiIfExists
+          emojiName={String(children)}
+          size={options.bigEmoji ? 32 : 16}
+          style={textStyle}
+          key={key}
+        />
+      )
     case 'native-emoji':
       return <Emoji emojiName={String(children)} size={options.bigEmoji ? 32 : 16} key={key} />
     case 'quote-block':
