@@ -565,6 +565,12 @@ export const resetResetType = {
   delete: 2,
 }
 
+export const saltpackAuthenticityType = {
+  signed: 0,
+  repudiable: 1,
+  anonymous: 2,
+}
+
 export const saltpackUiSaltpackSenderType = {
   notTracked: 0,
   unknown: 1,
@@ -841,6 +847,11 @@ export type AsyncOps =
   | 4 // COPY_4
   | 5 // MOVE_5
   | 6 // REMOVE_6
+
+export type AuthenticityType =
+  | 0 // SIGNED_0
+  | 1 // REPUDIABLE_1
+  | 2 // ANONYMOUS_2
 
 export type AvatarClearCacheMsg = $ReadOnly<{name: String, formats?: ?Array<AvatarFormat>}>
 export type AvatarFormat = String
@@ -1658,8 +1669,8 @@ export type RevokeWarning = $ReadOnly<{endangeredTLFs?: ?Array<TLF>}>
 export type RevokedKey = $ReadOnly<{key: PublicKey, time: KeybaseTime, by: KID}>
 export type RevokedProof = $ReadOnly<{proof: RemoteProof, diff: TrackDiff}>
 export type SHA512 = Bytes
-export type SaltpackDecryptOptions = $ReadOnly<{interactive: Boolean, forceRemoteCheck: Boolean, usePaperKey: Boolean}>
-export type SaltpackEncryptOptions = $ReadOnly<{recipients?: ?Array<String>, anonymousSender: Boolean, encryptionOnlyMode: Boolean, noSelfEncrypt: Boolean, binary: Boolean, saltpackVersion: Int}>
+export type SaltpackDecryptOptions = $ReadOnly<{interactive: Boolean, forceRemoteCheck: Boolean, usePaperKey: Boolean, useLegacyKBFSPseudonymResolver: Boolean}>
+export type SaltpackEncryptOptions = $ReadOnly<{recipients?: ?Array<String>, authenticityType: AuthenticityType, useEntityKeys: Boolean, useDeviceKeys: Boolean, usePaperKeys: Boolean, noSelfEncrypt: Boolean, binary: Boolean, saltpackVersion: Int}>
 export type SaltpackEncryptedMessageInfo = $ReadOnly<{devices?: ?Array<Device>, numAnonReceivers: Int, receiverIsAnon: Boolean, sender: SaltpackSender}>
 export type SaltpackSaltpackDecryptRpcParam = $ReadOnly<{source: Stream, sink: Stream, opts: SaltpackDecryptOptions}>
 export type SaltpackSaltpackEncryptRpcParam = $ReadOnly<{source: Stream, sink: Stream, opts: SaltpackEncryptOptions}>
