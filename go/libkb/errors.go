@@ -2394,3 +2394,15 @@ type NoTriplesecError struct{}
 
 func (e NoTriplesecError) Error() string { return "No Triplesec was available after prompt" }
 func NewNoTriplesecError() error         { return NoTriplesecError{} }
+
+//=============================================================================
+
+type RecipientNotFoundError struct {
+	error
+}
+
+func NewRecipientNotFoundError(message string) error {
+	return RecipientNotFoundError{
+		error: fmt.Errorf(message),
+	}
+}
