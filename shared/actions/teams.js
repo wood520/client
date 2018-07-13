@@ -45,7 +45,9 @@ const _createNewTeam = function*(action: TeamsGen.CreateNewTeamPayload) {
     yield Saga.all([
       Saga.put(navigateTo([{props: {teamname}, selected: 'team'}], [teamsTab])),
       // Show the avatar editor on desktop.
-      ...(!isMobile ? [Saga.put(navigateAppend([{props: {teamname}, selected: 'editTeamAvatar'}]))] : []),
+      ...(!isMobile
+        ? [Saga.put(navigateAppend([{props: {teamname, createdTeam: true}, selected: 'editTeamAvatar'}]))]
+        : []),
     ])
   } catch (error) {
     yield Saga.put(TeamsGen.createSetTeamCreationError({error: error.desc}))

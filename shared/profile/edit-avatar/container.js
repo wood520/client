@@ -10,8 +10,11 @@ import type {Response} from 'react-native-image-picker'
 
 const mapStateToProps = (
   state: TypedState,
-  {routeProps}: RouteProps<{image: Response, sendChatNotification: boolean, teamname: string}, {}>
+  {
+    routeProps,
+  }: RouteProps<{createdTeam: boolean, image: Response, sendChatNotification: boolean, teamname: string}, {}>
 ) => ({
+  createdTeam: routeProps.get('createdTeam'),
   image: routeProps.get('image'),
   sendChatNotification: routeProps.get('sendChatNotification'),
   teamname: routeProps.get('teamname'),
@@ -30,6 +33,7 @@ const mapDispatchToProps = (dispatch: Dispatch, ownProps: Props) => ({
 })
 
 const mergeProps = (stateProps, dispatchProps, ownProps: Props) => ({
+  createdTeam: stateProps.createdTeam,
   image: stateProps.image,
   onClose: dispatchProps.onClose,
   onSave: (filename: string, crop: RPCTypes.ImageCropRect, teamname: string, sendChatNotification: boolean) =>
